@@ -56,4 +56,7 @@ data/
 # Temporary files
 *.tmp
 *.temp
-.DS_Store 
+.DS_Store
+
+# YouTube API Demo
+thumbnails/ 
