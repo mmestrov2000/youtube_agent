@@ -4,9 +4,13 @@
 from typing import Dict, List, Optional
 import os
 import re
+from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import yt_dlp
+
+# Load environment variables from .env file
+load_dotenv()
 
 class YouTubeAPI:
     def __init__(self):
