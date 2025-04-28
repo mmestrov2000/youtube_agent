@@ -89,9 +89,9 @@ Each request can trigger a sophisticated workflow involving data gathering, AI-p
 *(To be added)*
 
 ## Team Information
-- **Team Lead**: GitHub handle and role
-- **Team Members**: GitHub handles and roles
-- **Background/Experience**: Brief team background
+- **Team Lead**: @mmestrov2000
+- **Team Members**: @Abhishek637Saraswat, @LukaMestrovic
+- **Background/Experience**: Marin Mestrovic has a Bachelor's degree in Mathematics with strong skills in algorithms, data science, and machine learning. Abhishek Saraswat is a B.Tech student in Electronics Engineering with experience in AI, machine learning, backend development, and projects in stock analysis and speech recognition. Luka Mestrovic has a background in physics, statistics, and mathematics, combined with industry-specific insights in influencer marketing.
 
 ## Prize Category (leave blank, to be assigned by judges)
 - [ ] Best use of Agno
