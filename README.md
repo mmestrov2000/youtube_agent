@@ -65,19 +65,21 @@ Each request can trigger a sophisticated workflow involving data gathering, AI-p
 - **Video**: sponsor‑segment timestamping  
 
 ## Tools Used
-| Purpose | Tool / Library |
-|---------|----------------|
-| Agent Orchestration | **Agno** |
-| Backend & API | **Python**, **FastAPI** |
-| Chat LLM | **OpenAI GPT-4o** |
-| Data Ingestion | **YouTube Data API**, `yt-dlp` |
-| Audio to Text | **OpenAI Whisper (medium)** |
-| Video Analysis | **Video-LLaMA** (for scene parsing, sponsor detection, visual understanding) |
-| Sentiment Analysis | `textblob` |
-| Vision & Thumbnails | **CLIP embeddings**, **OpenCV** |
-| ML Forecasting | **PyTorch** custom models with bootstrapped prediction intervals |
-| Report Generation | `jinja2` (HTML to PDF export) |
-| Frontend (Demo) | **Streamlit** |
+| **Purpose**              | **Tool / Library**                                                                 |
+|---------------------------|------------------------------------------------------------------------------------|
+| Agent Orchestration       | <img src="https://cdn.prod.website-files.com/6796d350b8c706e4533e7e32/6796d350b8c706e4533e8019_Favicon%20small.png" height="16" style="vertical-align:middle;"> **Agno** |
+| Backend & API             | **Python**, **FastAPI**                                                            |
+| Chat LLM                  | **OpenAI GPT-4o**                                                                  |
+| Data Ingestion            | **YouTube Data API**, `yt-dlp`, <img src="https://firecrawl.dev/favicon.ico" height="16" style="vertical-align:middle;"> **Firecrawl** (web scraping for scandals and controversies) |
+| Audio to Text             | **OpenAI Whisper (medium)**                                                        |
+| Video Analysis            | **Video-LLaMA** (scene parsing, sponsor detection, visual understanding)           |
+| Sentiment Analysis        | `textblob`                                                                         |
+| Vision & Thumbnails       | **CLIP embeddings**, **OpenCV**                                                    |
+| ML Forecasting            | **PyTorch** custom models with bootstrapped prediction intervals                   |
+| Report Generation         | `jinja2` (HTML to PDF export)                                                      |
+| Frontend (Demo)           | **Streamlit**                                                                      |
+| Memory Layer              | <img src="https://mem0.ai/favicon.ico" height="16" style="vertical-align:middle;"> **Mem0** (store influencer profiles and risk assessments for faster, enriched follow-ups) |
+| Knowledge Ingestion       | <img src="https://framerusercontent.com/images/KCOWBYLKunDff1Dr452y6EfjiU.png" height="16" style="vertical-align:middle;"> **Graphlit MCP Server** (ingest external documents like press releases and brand guidelines) |
 
 ## UI Approach
 - **Primary Interface**: Streamlit web app where marketers can chat naturally with BrandView AI to request influencer analysis, forecasts, reports, and recommendations.  
