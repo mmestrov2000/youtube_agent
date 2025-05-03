@@ -3,16 +3,9 @@
 from typing import Annotated, Callable, Any
 from agno.agent import Agent
 from agno.tools import tool
-from typing import Dict, List, Optional
-import os
-import re
-from dotenv import load_dotenv
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-import yt_dlp
+from typing import Dict, List
 
-# Load environment variables from .env file
-load_dotenv()
+from src.tools.helper.helper import _download_video, _resolve_channel_id, _fetch_video_details, _search_channel_videos, _fetch_channel_info, _fetch_videos, _fetch_comments, _introspect_channel, _search_youtube_channels, _search_and_introspect_channel
 
 
 def logger_hook(function_name: str, function_call: Callable, arguments: Dict[str, Any]):
@@ -21,23 +14,6 @@ def logger_hook(function_name: str, function_call: Callable, arguments: Dict[str
     result = function_call(**arguments)
     print(f"Function call completed with result: {result}")
     return result
-
-class YouTubeAPI:
-    def __init__(self):
-        self.api_key = os.getenv("YOUTUBE_API_KEY")
-        if not self.api_key:
-            raise ValueError("YouTube API key not found in environment variables")
-        
-        self.youtube = build('youtube', 'v3', developerKey=self.api_key)
-        self.ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': True
-        }
-
-# Create a singleton instance
-youtube_api = YouTubeAPI()
-
 
 @tool(
     name="download_video",                                   # Custom name for the tool
@@ -67,102 +43,7 @@ def download_video(
     Raises:
         Exception: If download fails
     """
-    try:
-        # Create output directory if it doesn't exist
-        os.makedirs(output_path, exist_ok=True)
-        
-        # Configure yt-dlp options
-        ydl_opts = {
-            'format': f'bestvideo[height<={quality[:-1]}]+bestaudio/best[height<={quality[:-1]}]' if quality.endswith('p') else quality,
-            'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
-            'quiet': False,
-            'no_warnings': False,
-            'progress': True
-        }
-        
-        # Create yt-dlp object
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Get video info
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            info = ydl.extract_info(video_url, download=True)
-            
-            # Return the path to the downloaded file
-            return os.path.join(output_path, f"{info['title']}.{info['ext']}")
-            
-    except Exception as e:
-        raise Exception(f"Error downloading video: {str(e)}")
-
-# Create the agent and add the tool
-agent = Agent(tools=[download_video])
-agent.print_response("Download the video with ID dQw4w9WgXcQ to my videos folder at 720p quality")
-
-
-@tool(
-    name="search_youtube_channel_videos",
-    description=(
-        "Search for videos within a specific YouTube channel that match a given term. "
-        "Returns a list of relevant video details including title, description, view count, and more."
-    ),
-    show_result=True,
-    stop_after_tool_call=True,
-    tool_hooks=[logger_hook],
-    cache_results=True,
-    cache_dir="/tmp/agno_cache",
-    cache_ttl=3600
-)
-def search_channel_videos(
-    channel_id: Annotated[str, "The unique identifier of the YouTube channel. This can be obtained from the channel's URL. Example: For the URL 'https://www.youtube.com/channel/UCXgGY0w3hN4+Vq3po9q7mn' the 'channel_id' is 'UCXgGY0w3hN4+Vq3po9q7mn'."],
-    search_term: Annotated[str, "The term to search for in video titles and descriptions. This is the keyword or phrase to look for within the channel's videos. Example: 'python tutorial' or 'travel vlog'."],
-    max_results: Annotated[int, "The maximum number of search results to return. This limits the number of videos that will be retrieved from the search. Default is 10. Example: 5 or 20." ] = 10
-) -> List[Dict]:
-    """
-    Search for videos within a specific channel that match the search term.
-    
-    Args:
-        channel_id (str): The YouTube channel ID
-        search_term (str): The term to search for in video titles and descriptions
-        max_results (int): Maximum number of videos to return (default: 10)
-        
-    Returns:
-        List[Dict]: List of video information including:
-            - id: Video ID
-            - title: Video title
-            - description: Video description
-            - publishedAt: Publication date
-            - viewCount: Number of views
-            - likeCount: Number of likes
-            - commentCount: Number of comments
-            - duration: Video duration
-            - thumbnails: Video thumbnails
-    """
-    try:
-        # Search for videos in the channel
-        request = youtube_api.youtube.search().list(
-            part="snippet",
-            channelId=channel_id,
-            q=search_term,
-            type="video",
-            maxResults=max_results,
-            order="relevance"
-        )
-        response = request.execute()
-        
-        if not response['items']:
-            return []
-        
-        # Get detailed information for each video
-        videos = []
-        for item in response['items']:
-            video_id = item['id']['videoId']
-            video_details = fetch_video_details(video_id)
-            videos.append(video_details)
-        
-        return videos
-        
-    except HttpError as e:
-        raise Exception(f"Error searching channel videos: {str(e)}")
-
-
+    return _download_video(video_id, output_path, quality)
 
 @tool(
     name="resolve_channel_id",
@@ -202,41 +83,76 @@ def resolve_channel_id(
     Raises:
         ValueError: If the channel cannot be found
     """
-    try:
-        # If it's already a channel ID (starts with UC), return it
-        if re.match(r'^UC[a-zA-Z0-9_-]{22}$', channel_identifier):
-            return channel_identifier
-            
-        # If it's a handle (starts with @), remove the @
-        if channel_identifier.startswith('@'):
-            channel_identifier = channel_identifier[1:]
-            
-        # If it's a URL, extract the handle
-        if 'youtube.com' in channel_identifier:
-            # Handle different URL formats
-            if '/c/' in channel_identifier:
-                channel_identifier = channel_identifier.split('/c/')[-1].split('/')[0]
-            elif '/channel/' in channel_identifier:
-                channel_identifier = channel_identifier.split('/channel/')[-1].split('/')[0]
-            elif '/user/' in channel_identifier:
-                channel_identifier = channel_identifier.split('/user/')[-1].split('/')[0]
-                
-        # Search for the channel
-        request = youtube_api.youtube.search().list(
-            part="snippet",
-            q=channel_identifier,
-            type="channel",
-            maxResults=1
-        )
-        response = request.execute()
+    return _resolve_channel_id(channel_identifier)
+
+@tool(
+    name="fetch_video_details",
+    description="Fetches detailed metadata about a YouTube video, including view count, likes, duration, etc.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
+def fetch_video_details(video_id: str) -> Dict:
+    """
+    Fetch detailed information about a specific video.
+    
+    Args:
+        video_id (str): The YouTube video ID
         
-        if not response['items']:
-            raise ValueError(f"Channel not found: {channel_identifier}")
-            
-        return response['items'][0]['id']['channelId']
+    Returns:
+        Dict: Video information including:
+            - id: Video ID
+            - title: Video title
+            - description: Video description
+            - publishedAt: Publication date
+            - viewCount: Number of views
+            - likeCount: Number of likes
+            - commentCount: Number of comments
+            - duration: Video duration
+            - thumbnails: Video thumbnails
+    """
+    return _fetch_video_details(video_id)
+
+@tool(
+    name="search_youtube_channel_videos",
+    description=(
+        "Search for videos within a specific YouTube channel that match a given term. "
+        "Returns a list of relevant video details including title, description, view count, and more."
+    ),
+    show_result=True,
+    stop_after_tool_call=True,
+    tool_hooks=[logger_hook],
+    cache_results=True,
+    cache_dir="/tmp/agno_cache",
+    cache_ttl=3600
+)
+def search_channel_videos(
+    channel_id: Annotated[str, "The unique identifier of the YouTube channel. This can be obtained from the channel's URL. Example: For the URL 'https://www.youtube.com/channel/UCXgGY0w3hN4+Vq3po9q7mn' the 'channel_id' is 'UCXgGY0w3hN4+Vq3po9q7mn'."],
+    search_term: Annotated[str, "The term to search for in video titles and descriptions. This is the keyword or phrase to look for within the channel's videos. Example: 'python tutorial' or 'travel vlog'."],
+    max_results: Annotated[int, "The maximum number of search results to return. This limits the number of videos that will be retrieved from the search. Default is 10. Example: 5 or 20." ] = 10
+) -> List[Dict]:
+    """
+    Search for videos within a specific channel that match the search term.
+    
+    Args:
+        channel_id (str): The YouTube channel ID
+        search_term (str): The term to search for in video titles and descriptions
+        max_results (int): Maximum number of videos to return (default: 10)
         
-    except HttpError as e:
-        raise Exception(f"Error resolving channel ID: {str(e)}")
+    Returns:
+        List[Dict]: List of video information including:
+            - id: Video ID
+            - title: Video title
+            - description: Video description
+            - publishedAt: Publication date
+            - viewCount: Number of views
+            - likeCount: Number of likes
+            - commentCount: Number of comments
+            - duration: Video duration
+            - thumbnails: Video thumbnails
+    """
+    return _search_channel_videos(channel_id, search_term, max_results)
 
 @tool(
     name="fetch_channel_info",
@@ -272,29 +188,16 @@ def fetch_channel_info(
             - videoCount: Number of videos
             - thumbnails: Channel thumbnails
     """
-    try:
-        request = youtube_api.youtube.channels().list(
-            part="snippet,statistics",
-            id=channel_id
-        )
-        response = request.execute()
-        
-        if not response['items']:
-            raise ValueError(f"Channel not found: {channel_id}")
-        
-        channel = response['items'][0]
-        return {
-            "id": channel['id'],
-            "title": channel['snippet']['title'],
-            "description": channel['snippet']['description'],
-            "subscriberCount": int(channel['statistics']['subscriberCount']),
-            "viewCount": int(channel['statistics']['viewCount']),
-            "videoCount": int(channel['statistics']['videoCount']),
-            "thumbnails": channel['snippet']['thumbnails']
-        }
-    except HttpError as e:
-        raise Exception(f"Error fetching channel info: {str(e)}")
+    return _fetch_channel_info(channel_id)
 
+@tool(
+    name="fetch_videos",
+    description="Fetches information about the videos on a YouTube channel based on the channel ID given the max number of videos to fetch.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
 def fetch_videos(
     channel_id: Annotated[str, """
         The unique identifier of the YouTube channel. 
@@ -327,91 +230,7 @@ def fetch_videos(
             - duration: Video duration
             - thumbnails: Video thumbnails
     """
-    try:
-        # First get the uploads playlist ID
-        request = youtube_api.youtube.channels().list(
-            part="contentDetails",
-            id=channel_id
-        )
-        response = request.execute()
-        
-        if not response['items']:
-            raise ValueError(f"Channel not found: {channel_id}")
-        
-        uploads_playlist_id = response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
-        
-        # Then get the videos from the uploads playlist
-        request = youtube_api.youtube.playlistItems().list(
-            part="snippet,contentDetails",
-            playlistId=uploads_playlist_id,
-            maxResults=max_results
-        )
-        response = request.execute()
-        
-        videos = []
-        for item in response['items']:
-            video_id = item['contentDetails']['videoId']
-            video_details = fetch_video_details(video_id)
-            videos.append(video_details)
-        
-        return videos
-    except HttpError as e:
-        raise Exception(f"Error fetching videos: {str(e)}")
-
-
-
-@tool(
-    name="fetch_video_details",
-    description="Fetches detailed metadata about a YouTube video, including view count, likes, duration, etc.",
-    show_result=True,
-    cache_results=True,
-    cache_ttl=3600,
-    cache_dir="/tmp/agno_cache"
-)
-def fetch_video_details(video_id: str) -> Dict:
-    """
-    Fetch detailed information about a specific video.
-    
-    Args:
-        video_id (str): The YouTube video ID
-        
-    Returns:
-        Dict: Video information including:
-            - id: Video ID
-            - title: Video title
-            - description: Video description
-            - publishedAt: Publication date
-            - viewCount: Number of views
-            - likeCount: Number of likes
-            - commentCount: Number of comments
-            - duration: Video duration
-            - thumbnails: Video thumbnails
-    """
-    try:
-        request = youtube_api.youtube.videos().list(
-            part="snippet,statistics,contentDetails",
-            id=video_id
-        )
-        response = request.execute()
-        
-        if not response['items']:
-            raise ValueError(f"Video not found: {video_id}")
-        
-        video = response['items'][0]
-        return {
-            "id": video['id'],
-            "title": video['snippet']['title'],
-            "description": video['snippet']['description'],
-            "publishedAt": video['snippet']['publishedAt'],
-            "viewCount": int(video['statistics']['viewCount']),
-            "likeCount": int(video['statistics'].get('likeCount', 0)),
-            "commentCount": int(video['statistics'].get('commentCount', 0)),
-            "duration": video['contentDetails']['duration'],
-            "thumbnails": video['snippet']['thumbnails']
-        }
-    except HttpError as e:
-        raise Exception(f"Error fetching video details: {str(e)}")
-
+    return _fetch_videos(channel_id, max_results)
 
 @tool(
     name="fetch_comments",
@@ -445,30 +264,8 @@ def fetch_comments(
             - likeCount: Number of likes
             - publishedAt: Publication date
     """
-    try:
-        request = youtube_api.youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=max_results,
-            order="relevance"
-        )
-        response = request.execute()
-        
-        comments = []
-        for item in response['items']:
-            comment = item['snippet']['topLevelComment']['snippet']
-            comments.append({
-                "id": comment['id'],
-                "author": comment['authorDisplayName'],
-                "text": comment['textDisplay'],
-                "likeCount": comment['likeCount'],
-                "publishedAt": comment['publishedAt']
-            })
-        
-        return comments
-    except HttpError as e:
-        raise Exception(f"Error fetching comments: {str(e)}")
-
+    return _fetch_comments(video_id, max_results)
+    
 @tool(
     name="introspect_channel",
     description="Fetch comprehensive channel data including basic info and recent videos using either a channel handle or full URL.",
@@ -490,25 +287,7 @@ def introspect_channel(
     """
     Resolve the identifier to a channel ID, fetch channel info and recent videos.
     """
-    try:
-        # Step 1: Resolve to Channel ID
-        channel_id = resolve_channel_id(identifier)
-
-        # Step 2: Fetch channel info
-        channel_info = fetch_channel_info(channel_id)
-
-        # Step 3: Fetch videos
-        recent_videos = fetch_videos(channel_id, max_videos)
-
-        return {
-            "channel_info": channel_info,
-            "recent_videos": recent_videos
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
+    return _introspect_channel(identifier, max_videos)
 
 @tool(
     name="search_youtube_channels",
@@ -531,25 +310,7 @@ def search_youtube_channels(
     Search YouTube for channels related to the query.
     Returns a list of channel summaries including ID, title, description, and thumbnail.
     """
-    try:
-        request = youtube_api.youtube.search().list(
-            part="snippet",
-            q=query,
-            type="channel",
-            maxResults=max_results
-        )
-        response = request.execute()
-
-        return [{
-            "channelId": item['id']['channelId'],
-            "title": item['snippet']['title'],
-            "description": item['snippet']['description'],
-            "thumbnails": item['snippet']['thumbnails']
-        } for item in response.get('items', [])]
-
-    except Exception as e:
-        return [{"error": str(e)}]
-
+    return _search_youtube_channels(query, max_results)
 
 @tool(
         name="search_and_introspect_channel",
@@ -571,33 +332,4 @@ def search_and_introspect_channel(
         """
         Searches for YouTube channels by query, then fetches full info and videos for the top result.
         """
-        try:
-            # Step 1: Search channels
-            search_response = youtube_api.youtube.search().list(
-                part="snippet",
-                q=query,
-                type="channel",
-                maxResults=1
-            ).execute()
-
-            if not search_response['items']:
-                return {"error": f"No channels found for query: {query}"}
-
-            top_channel = search_response['items'][0]
-            channel_id = top_channel['id']['channelId']
-
-            # Step 2: Fetch channel info
-            channel_info = fetch_channel_info(channel_id)
-
-            # Step 3: Fetch recent videos
-            videos = fetch_videos(channel_id, max_results=video_count)
-
-            return {
-                "query": query,
-                "channelInfo": channel_info,
-                "recentVideos": videos
-            }
-
-        except Exception as e:
-            return {"error": str(e)}
-
+        return _search_and_introspect_channel(query, video_count)
