@@ -3,7 +3,7 @@ from agno.models.openai import OpenAIChat
 from agno.team.team import Team
 from src.tools.youtube_api import (
     resolve_channel_id,
-    search_channel_videos,
+    search_youtube_channel_videos,
     fetch_channel_info,
     fetch_videos,
     introspect_channel,
@@ -34,7 +34,7 @@ channel_collector = Agent(
     role="Collects comprehensive data about YouTube channels",
     model=OpenAIChat(id="gpt-4o"),
     tools=[
-        search_channel_videos,
+        search_youtube_channel_videos,
         fetch_channel_info,
         fetch_videos,
         introspect_channel
@@ -112,5 +112,18 @@ if __name__ == "__main__":
     request = """
     Please help me find the number of views for the 3 most recent videos about "AI sales agent" on the channel @BenAI92.
     """
+
+    request_2 = """
+    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 videos on the topic of automation in sales on this channel. For this video you should find this info: published date, views count, likes count, comments count.
+    """
+
+    request_3 = """
+    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 latest videos on this channel. For every video find the latest 5 comments.
+    """
+
+    request_4 = """
+    Fetch the title and description of the last 10 videos on the channel @BenAI92. 
+    See if he had any sponsored video - and list the brands he has promoted.
+    """
     
-    youtube_team.print_response(request, stream=True) 
+    youtube_team.print_response(request_4, stream=True) 
