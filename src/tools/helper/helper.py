@@ -115,7 +115,7 @@ def _fetch_video_details(video_id: str) -> Dict:
     except HttpError as e:
         raise Exception(f"Error fetching video details: {str(e)}")
     
-def _search_channel_videos(channel_id: str, search_term: str, max_results: int = 10) -> List[Dict]:
+def _search_youtube_channel_videos(channel_id: str, search_term: str, max_results: int = 10) -> List[Dict]:
     try:
         # Search for videos in the channel
         request = youtube_api.youtube.search().list(
@@ -199,30 +199,50 @@ def _fetch_videos(channel_id: str, max_results: int = 10) -> List[Dict]:
     except HttpError as e:
         raise Exception(f"Error fetching videos: {str(e)}")
     
-def _fetch_comments(video_id: str, max_results: int = 100) -> List[Dict]:
+def _fetch_comments(video_id: str, max_results: int = 25) -> List[Dict]:
+    comments: List[Dict] = []
+    next_page_token = None
+
     try:
-        request = youtube_api.youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=max_results,
-            order="relevance"
-        )
-        response = request.execute()
-        
-        comments = []
-        for item in response['items']:
-            comment = item['snippet']['topLevelComment']['snippet']
-            comments.append({
-                "id": comment['id'],
-                "author": comment['authorDisplayName'],
-                "text": comment['textDisplay'],
-                "likeCount": comment['likeCount'],
-                "publishedAt": comment['publishedAt']
-            })
-        
+        while len(comments) < max_results:
+            # fetch up to 100 per page (API limit), or however many you still need
+            batch_size = min(100, max_results - len(comments))
+            request = youtube_api.youtube.commentThreads().list(
+                part="snippet",
+                videoId=video_id,
+                maxResults=batch_size,
+                order="time",            # newest first
+                pageToken=next_page_token
+            )
+            response = request.execute()
+
+            for item in response.get('items', []):
+                top = item.get('snippet', {}).get('topLevelComment', {})
+                snip = top.get('snippet', {})
+
+                # ensure we at least have an ID and text before appending
+                comment_id = top.get('id')
+                text = snip.get('textDisplay')
+                if not comment_id or text is None:
+                    continue
+
+                comments.append({
+                    "id": comment_id,
+                    "author": snip.get('authorDisplayName', 'Unknown'),
+                    "text": text,
+                    "likeCount": snip.get('likeCount', 0),
+                    "publishedAt": snip.get('publishedAt')
+                })
+
+            # prepare for next page (if any)
+            next_page_token = response.get('nextPageToken')
+            if not next_page_token:
+                break
+
         return comments
+
     except HttpError as e:
-        raise Exception(f"Error fetching comments: {str(e)}")
+        raise Exception(f"Error fetching comments: {e}")
     
 def _introspect_channel(identifier: str, max_videos: int = 10) -> Dict:
     try:

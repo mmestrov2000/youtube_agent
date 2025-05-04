@@ -5,7 +5,7 @@ from agno.agent import Agent
 from agno.tools import tool
 from typing import Dict, List
 
-from src.tools.helper.helper import _download_video, _resolve_channel_id, _fetch_video_details, _search_channel_videos, _fetch_channel_info, _fetch_videos, _fetch_comments, _introspect_channel, _search_youtube_channels, _search_and_introspect_channel
+from src.tools.helper.helper import _download_video, _resolve_channel_id, _fetch_video_details, _search_youtube_channel_videos, _fetch_channel_info, _fetch_videos, _fetch_comments, _introspect_channel, _search_youtube_channels, _search_and_introspect_channel
 
 
 def logger_hook(function_name: str, function_call: Callable, arguments: Dict[str, Any]):
@@ -118,7 +118,7 @@ def fetch_video_details(video_id: str) -> Dict:
     name="search_youtube_channel_videos",
     description=(
         "Search for videos within a specific YouTube channel that match a given term. "
-        "Returns a list of relevant video details including title, description, view count, and more."
+        "Returns a list of videos."
     ),
     show_result=True,
     stop_after_tool_call=True,
@@ -127,7 +127,7 @@ def fetch_video_details(video_id: str) -> Dict:
     cache_dir="/tmp/agno_cache",
     cache_ttl=3600
 )
-def search_channel_videos(
+def search_youtube_channel_videos(
     channel_id: Annotated[str, "The unique identifier of the YouTube channel. This can be obtained from the channel's URL. Example: For the URL 'https://www.youtube.com/channel/UCXgGY0w3hN4+Vq3po9q7mn' the 'channel_id' is 'UCXgGY0w3hN4+Vq3po9q7mn'."],
     search_term: Annotated[str, "The term to search for in video titles and descriptions. This is the keyword or phrase to look for within the channel's videos. Example: 'python tutorial' or 'travel vlog'."],
     max_results: Annotated[int, "The maximum number of search results to return. This limits the number of videos that will be retrieved from the search. Default is 10. Example: 5 or 20." ] = 10
@@ -152,7 +152,7 @@ def search_channel_videos(
             - duration: Video duration
             - thumbnails: Video thumbnails
     """
-    return _search_channel_videos(channel_id, search_term, max_results)
+    return _search_youtube_channel_videos(channel_id, search_term, max_results)
 
 @tool(
     name="fetch_channel_info",
