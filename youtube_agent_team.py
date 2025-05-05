@@ -11,6 +11,13 @@ from src.tools.youtube_api import (
     fetch_comments,
     search_youtube_channels
 )
+from agno.tools.reasoning import ReasoningTools
+from agno.tools.python import PythonTools
+from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # Create individual specialized agents
 
@@ -106,6 +113,21 @@ youtube_team = Team(
     enable_agentic_context=True  # Enable shared context between agents
 )
 
+python_coder = Agent(
+    name="Python Script Generator",
+    role="Generates and executes Python scripts based on user queries.",
+    model=OpenAIChat(id="gpt-4o"),
+    tools=[PythonTools(base_dir=Path("tmp/python"))],
+    instructions=[
+        "Use the PythonTools to generate and execute Python scripts.",
+        "Respond with well-commented Python code that solves the user's request.",
+        "Only write code that is safe and relevant to the task.",
+        "Avoid unnecessary output; show only the results or saved file paths.",
+        "If a graph is generated, save it using matplotlib instead of displaying it.",
+    ],
+    show_tool_calls=True,
+    markdown=True
+)
 # Example usage
 if __name__ == "__main__":
     # Task: Find the number of views for the 3 videos on the topic of "AI sales agent" on the channel @BenAI92
@@ -126,4 +148,5 @@ if __name__ == "__main__":
     See if he had any sponsored video - and list the brands he has promoted.
     """
     
-    youtube_team.print_response(request_4, stream=True) 
+    #youtube_team.print_response(request_4, stream=True)
+    python_coder.print_response("Write a Python script that plots a bar chart of the top 10 Indian states by population from the 2011 Census.")
