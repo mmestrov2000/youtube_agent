@@ -6,11 +6,13 @@ from src.tools.youtube_api import (
     search_youtube_channel_videos,
     fetch_channel_info,
     fetch_videos,
+    fetch_video_statistics,
     introspect_channel,
     fetch_video_details,
     fetch_comments,
     search_youtube_channels
 )
+from src.tools.video_analysis import video_to_text, analyze_video_content
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.python import PythonTools
 from pathlib import Path
@@ -134,12 +136,77 @@ python_coder = Agent(
     markdown=True
 )
 
+# Agent 7: Sentiment Analyzer
+sentiment_analyzer = Agent(
+    name="Sentiment Analyzer",
+    role="Assigns sentiment scores to text or list of texts using the sentiment_score tool",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[sentiment_score],
+    instructions=[
+        "You are a sentiment analyzer. You receive a single text or a list of texts (probably a list of YouTube comments) and must return a sentiment score.",
+        "Use the sentiment_score tool to compute the sentiment.",
+        "At the end, return a JSON object with field sentiment_score."
+    ],
+    expected_output="Present your output as JSON with field sentiment_score.",
+    show_tool_calls=True,
+    markdown=True
+)
+
+# Agent 8: Video Statistics Specialist
+video_statistics_specialist = Agent(
+    name="Video Statistics Specialist",
+    role="Analyzes engagement statistics for recent videos on a YouTube channel",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[resolve_channel_id, fetch_video_statistics],
+    instructions=[
+        "You are a video statistics specialist focused on analyzing engagement metrics.",
+        "First resolve the channel identifier to get the official channel ID.",
+        "Then fetch statistics for recent videos including views, likes, comments, and favorites.",
+        "Present the statistics in a clear, tabular format.",
+        "Focus on providing insights about video performance and engagement patterns."
+    ],
+    show_tool_calls=True,
+    markdown=True
+)
+
+# Agent 9: Video Content Analyzer
+video_content_analyzer = Agent(
+    name="Video Content Analyzer",
+    role="Analyzes video content for transcription and brand integration detection",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[resolve_channel_id, video_to_text, analyze_video_content],
+    instructions=[
+        "You are a video content analysis specialist focused on transcribing videos and detecting brand integrations.",
+        "First resolve any channel identifiers to get the official channel ID when needed.",
+        "Use video_to_text to transcribe video content when requested.",
+        "Use analyze_video_content to detect scenes, sponsors, and visual elements in videos.",
+        "Present your analysis in a clear, structured format with the following sections:",
+        "1. Video Transcription: Full text content of the video",
+        "2. Scene Analysis: Detected scenes with timestamps",
+        "3. Brand Integration Analysis: Detected sponsor segments and brand mentions",
+        "4. Visual Elements: Notable visual elements detected in the video",
+        "Focus on providing comprehensive content analysis and brand integration detection."
+    ],
+    show_tool_calls=True,
+    markdown=True
+)
+
 # Create the YouTube analysis team
 youtube_team = Team(
     name="YouTube Analysis Team",
     mode="coordinate",  # Using coordinate mode to delegate tasks and synthesize responses
-    model=OpenAIChat(id="gpt-4.1-mini"),
-    members=[channel_resolver, channel_collector, video_collector, channel_searcher, risk_analyzer, python_coder],
+    model=OpenAIChat(id="gpt-4o"),
+    members=[
+        channel_resolver,
+        channel_collector,
+        video_collector,
+        channel_searcher,
+        risk_analyzer,
+        python_coder,
+        sentiment_analyzer,
+        video_statistics_specialist,
+        video_content_analyzer
+    ],
     show_tool_calls=True,
     markdown=True,
     description="A team of specialized agents for comprehensive YouTube data analysis",
@@ -152,7 +219,10 @@ youtube_team = Team(
         "3. Use Video Data Collector for detailed video analysis",
         "4. Use Channel Search Specialist for discovering relevant channels",
         "5. Use Risk Analysis Agent for evaluating potential risks and brand safety concerns",
-        "6. Use Python Script Generator to execute Python scripts based on user queries.",
+        "6. Use Python Script Generator to execute Python scripts based on user queries. You can use this agent to do any calculations with numbers also.",
+        "7. Use Sentiment Analyzer when you need to compute sentiment scores for text or comments.",
+        "8. Use Video Statistics Specialist when you need to analyze engagement metrics for recent videos.",
+        "9. Use Video Content Analyzer when you need to transcribe videos or detect brand integrations.",
         "Present all data in a clear, organized format using markdown.",
         "Ensure proper coordination between agents when tasks require multiple steps.",
         "Maintain context between different analysis steps."
@@ -160,29 +230,46 @@ youtube_team = Team(
     show_members_responses=True,
     enable_agentic_context=True  # Enable shared context between agents
 )
+
 # Example usage
 if __name__ == "__main__":
-    # Task: Find the number of views for the 3 videos on the topic of "AI sales agent" on the channel @BenAI92
-    request = """
-    Please help me find the number of views for the 3 most recent videos about "AI sales agent" on the channel @BenAI92.
+    # Basic prompts for individual agents
+    channel_resolver_prompt = "Resolve the channel ID for @BenAI92"
+    channel_collector_prompt = "Get basic info and last 5 videos for @BenAI92"
+    video_collector_prompt = "Get details and comments for video ID 'ngLyX54e1LU'"
+    channel_searcher_prompt = "Find channels about AI sales automation"
+    risk_analyzer_prompt = "Analyze risk for influencer Carryminati"
+    python_coder_prompt = "Calculate average views for last 5 videos of @BenAI92"
+    sentiment_analyzer_prompt = "Analyze sentiment of comments for video 'ngLyX54e1LU'"
+    video_stats_prompt = "Get statistics for last 10 videos of @BenAI92"
+    video_content_prompt = "Analyze content and sponsors in video 'ngLyX54e1LU'"
+
+    # Complex prompts for team analysis
+    team_prompt_1 = """
+    Find a YouTube channel @LslieLawson, summarize the channel info. Take last 7 videos with the views count of this YouTube channel, 
+    summarize the content and predict the 75% two-sided interval of the views for the next video. For every video take last 5 comments 
+    and give a sentiment score to each video. Do a web search to see if there is a risk working with this influencer. Return a detailed 
+    report where you'll write the summary of the channel, explain the content in detail and you can also save a graph where you'll plot 
+    the historical views and horizontal lines for lower and upper bound of 75% two-sided predicition interval. You can also plot the 
+    sentiment scores for the last 7 videos. Please include the risk analysis in this report. Nicely format the detailed report.
     """
 
-    request_2 = """
-    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 videos on the topic of automation in sales on this channel. For this video you should find this info: published date, views count, likes count, comments count.
+    team_prompt_2 = """
+    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 videos on the topic of 
+    automation in sales on this channel. For this video you should find this info: published date, views count, likes count, comments count.
     """
 
-    request_3 = """
-    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 latest videos on this channel. For every video find the latest 5 comments.
-    """
+    # Individual agent tests (commented out)
+    # channel_resolver.print_response(channel_resolver_prompt, stream=True)
+    # channel_collector.print_response(channel_collector_prompt, stream=True)
+    # video_collector.print_response(video_collector_prompt, stream=True)
+    # channel_searcher.print_response(channel_searcher_prompt, stream=True)
+    # risk_analyzer.print_response(risk_analyzer_prompt, stream=True)
+    # python_coder.print_response(python_coder_prompt, stream=True)
+    # sentiment_analyzer.print_response(sentiment_analyzer_prompt, stream=True)
+    # video_statistics_specialist.print_response(video_stats_prompt, stream=True)
+    # video_content_analyzer.print_response(video_content_prompt, stream=True)
 
-    request_4 = """
-    Fetch the title and description of the last 10 videos on the channel @BenAI92. 
-    See if he had any sponsored video - and list the brands he has promoted.
-    """
-
-    request_5 = "Is this influencer risky: Carryminati. Do a web search to find controversies, and find his YouTube channel to calculate the sentiment score on the comments in his last 3 videos."
-    
-    request_6 = "Take last 10 video views of the YouTube channel @JamesCharles and predict the 90% two-sided interval of the views for the next video. Plot a graph of historical video views and horizontal lines for lower and upper part. Make sure that all numbers are in the same format and scaled correctly."
-
-    youtube_team.print_response(request_6, stream=True)
-    #python_coder.print_response("Write a Python script that plots a bar chart of the top 10 Indian states by population from the 2011 Census.")
+    # Team analysis test
+    youtube_team.print_response(team_prompt_1, stream=True)
+    # youtube_team.print_response(team_prompt_2, stream=True)

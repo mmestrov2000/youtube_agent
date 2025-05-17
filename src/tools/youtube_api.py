@@ -5,7 +5,7 @@ from agno.agent import Agent
 from agno.tools import tool
 from typing import Dict, List
 
-from src.tools.helper.helper import _download_video, _resolve_channel_id, _fetch_video_details, _search_youtube_channel_videos, _fetch_channel_info, _fetch_videos, _fetch_comments, _introspect_channel, _search_youtube_channels, _search_and_introspect_channel
+from src.tools.helper.helper import _download_video, _resolve_channel_id, _fetch_video_details, _search_youtube_channel_videos, _fetch_channel_info, _fetch_videos, _fetch_comments, _introspect_channel, _search_youtube_channels, _search_and_introspect_channel, _fetch_video_statistics
 
 
 def logger_hook(function_name: str, function_call: Callable, arguments: Dict[str, Any]):
@@ -231,6 +231,44 @@ def fetch_videos(
             - thumbnails: Video thumbnails
     """
     return _fetch_videos(channel_id, max_results)
+
+@tool(
+    name="fetch_video_statistics",
+    description="Fetches statistics (views, likes, comments, favorites) for recent videos on a YouTube channel.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
+def fetch_video_statistics(
+    channel_id: Annotated[str, """
+        The unique identifier of the YouTube channel. 
+        This is the part of the YouTube URL after '/channel/'. For example:
+        - For the URL 'https://www.youtube.com/channel/UCxxxxxxx', the `channel_id` would be 'UCxxxxxxx'.
+        - This can also be the channel ID directly (e.g., 'UC1234567890').
+    """],
+    max_results: Annotated[int, """
+        The maximum number of videos to fetch statistics for. 
+        This value controls how many recent videos will be analyzed.
+        Default is 10, but can be set to any integer value.
+    """ ] = 10
+) -> List[Dict]:
+    """
+    Fetch statistics for recent videos on a channel.
+    
+    Args:
+        channel_id (str): The YouTube channel ID
+        max_results (int): Maximum number of videos to fetch statistics for (default: 10)
+        
+    Returns:
+        List[Dict]: List of video statistics including:
+            - videoId: Video ID
+            - viewCount: Number of views
+            - likeCount: Number of likes
+            - commentCount: Number of comments
+            - favoriteCount: Number of times the video was favorited
+    """
+    return _fetch_video_statistics(channel_id, max_results)
 
 @tool(
     name="fetch_comments",

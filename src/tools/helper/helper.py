@@ -6,6 +6,10 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
+import whisper
+import tempfile
+
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -283,6 +287,54 @@ def _search_youtube_channels(query: str, max_results: int = 5) -> List[Dict]:
     except Exception as e:
         return [{"error": str(e)}]
     
+def _fetch_video_statistics(channel_id: str, max_results: int = 10) -> List[Dict]:
+    try:
+        # First get the uploads playlist ID
+        request = youtube_api.youtube.channels().list(
+            part="contentDetails",
+            id=channel_id
+        )
+        response = request.execute()
+        
+        if not response['items']:
+            raise ValueError(f"Channel not found: {channel_id}")
+        
+        uploads_playlist_id = response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+        
+        # Then get the videos from the uploads playlist
+        request = youtube_api.youtube.playlistItems().list(
+            part="contentDetails",
+            playlistId=uploads_playlist_id,
+            maxResults=max_results
+        )
+        response = request.execute()
+        
+        # Get video IDs
+        video_ids = [item['contentDetails']['videoId'] for item in response['items']]
+        
+        # Fetch statistics for all videos in one request
+        stats_request = youtube_api.youtube.videos().list(
+            part="statistics",
+            id=','.join(video_ids)
+        )
+        stats_response = stats_request.execute()
+        
+        # Process and return statistics
+        video_stats = []
+        for video in stats_response['items']:
+            stats = video['statistics']
+            video_stats.append({
+                "videoId": video['id'],
+                "viewCount": int(stats.get('viewCount', 0)),
+                "likeCount": int(stats.get('likeCount', 0)),
+                "commentCount": int(stats.get('commentCount', 0)),
+                "favoriteCount": int(stats.get('favoriteCount', 0))
+            })
+        
+        return video_stats
+    except HttpError as e:
+        raise Exception(f"Error fetching video statistics: {str(e)}")
+
 def _search_and_introspect_channel(query: str, video_count: int = 5) -> Dict:
         try:
             # Step 1: Search channels
@@ -313,3 +365,33 @@ def _search_and_introspect_channel(query: str, video_count: int = 5) -> Dict:
 
         except Exception as e:
             return {"error": str(e)}
+
+def _video_to_text(video_id: str) -> str:
+    # Initialize Whisper model
+    model_size = "base"
+    whisper_model = whisper.load_model(model_size)
+    
+    # Download video
+    ydl_opts = {
+        'format': 'best[ext=mp4]',
+        'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s'
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        info = ydl.extract_info(url, download=True)
+        video_path = f"{tempfile.gettempdir()}/{video_id}.mp4"
+    
+    try:
+        # Transcribe the video
+        result = whisper_model.transcribe(video_path)
+        
+        # Clean up the downloaded video
+        os.remove(video_path)
+        
+        return result["text"]
+    except Exception as e:
+        # Clean up in case of error
+        if os.path.exists(video_path):
+            os.remove(video_path)
+        raise e
