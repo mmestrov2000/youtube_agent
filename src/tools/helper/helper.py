@@ -287,7 +287,7 @@ def _search_youtube_channels(query: str, max_results: int = 5) -> List[Dict]:
     except Exception as e:
         return [{"error": str(e)}]
     
-def _fetch_video_statistics(channel_id: str, max_results: int = 10) -> List[Dict]:
+def _fetch_video_statistics(channel_id: str, max_results: int = 10, months: int = 6, min_duration_minutes: int = 3) -> List[Dict]:
     try:
         # First get the uploads playlist ID
         request = youtube_api.youtube.channels().list(
@@ -303,33 +303,87 @@ def _fetch_video_statistics(channel_id: str, max_results: int = 10) -> List[Dict
         
         # Then get the videos from the uploads playlist
         request = youtube_api.youtube.playlistItems().list(
-            part="contentDetails",
+            part="snippet,contentDetails",
             playlistId=uploads_playlist_id,
-            maxResults=max_results
+            maxResults=50  # Increased to ensure we get enough videos after filtering
         )
         response = request.execute()
         
         # Get video IDs
         video_ids = [item['contentDetails']['videoId'] for item in response['items']]
         
-        # Fetch statistics for all videos in one request
+        # Fetch statistics and content details for all videos in one request
         stats_request = youtube_api.youtube.videos().list(
-            part="statistics",
+            part="statistics,contentDetails,snippet",
             id=','.join(video_ids)
         )
         stats_response = stats_request.execute()
         
-        # Process and return statistics
+        # Calculate the cutoff date (X months ago)
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.utcnow() - timedelta(days=30 * months)
+        
+        # Process and filter statistics
         video_stats = []
         for video in stats_response['items']:
+            # Parse publish date
+            publish_date = datetime.strptime(video['snippet']['publishedAt'], '%Y-%m-%dT%H:%M:%SZ')
+            
+            # Parse duration (ISO 8601 format)
+            duration_str = video['contentDetails']['duration']
+            duration_minutes = 0
+            
+            # Handle hours
+            if 'H' in duration_str:
+                hours_part = duration_str.split('H')[0]
+                if 'T' in hours_part:
+                    hours = int(hours_part.split('T')[1])
+                else:
+                    hours = int(hours_part)
+                duration_minutes += hours * 60
+            
+            # Handle minutes
+            if 'M' in duration_str:
+                minutes_part = duration_str.split('M')[0]
+                if 'H' in minutes_part:
+                    minutes = int(minutes_part.split('H')[-1])
+                elif 'T' in minutes_part:
+                    minutes = int(minutes_part.split('T')[-1])
+                else:
+                    minutes = int(minutes_part)
+                duration_minutes += minutes
+            
+            # Handle seconds (convert to minutes if needed)
+            if 'S' in duration_str:
+                seconds_part = duration_str.split('S')[0]
+                if 'M' in seconds_part:
+                    seconds = int(seconds_part.split('M')[-1])
+                elif 'H' in seconds_part:
+                    seconds = int(seconds_part.split('H')[-1])
+                elif 'T' in seconds_part:
+                    seconds = int(seconds_part.split('T')[-1])
+                else:
+                    seconds = int(seconds_part)
+                duration_minutes += seconds / 60
+            
+            # Apply filters
+            if publish_date < cutoff_date or duration_minutes < min_duration_minutes:
+                continue
+                
             stats = video['statistics']
             video_stats.append({
                 "videoId": video['id'],
                 "viewCount": int(stats.get('viewCount', 0)),
                 "likeCount": int(stats.get('likeCount', 0)),
                 "commentCount": int(stats.get('commentCount', 0)),
-                "favoriteCount": int(stats.get('favoriteCount', 0))
+                "favoriteCount": int(stats.get('favoriteCount', 0)),
+                "durationMinutes": round(duration_minutes, 2),
+                "publishedAt": video['snippet']['publishedAt']
             })
+            
+            # Stop if we have enough videos
+            if len(video_stats) >= max_results:
+                break
         
         return video_stats
     except HttpError as e:

@@ -76,8 +76,9 @@ def analyze_video_content(
         
     Returns:
         Dict: Analysis results including:
-            - scenes: List of scenes with timestamps and transcriptions
+            - scenes: List of scenes with timestamps, transcriptions, summaries, and sponsor mentions
             - sponsors: List of detected sponsors
+            - metadata: Dictionary containing video title and description
             
     Raises:
         Exception: If video download or analysis fails
@@ -97,6 +98,7 @@ def analyze_video_content(
             info = ydl.extract_info(url, download=True)
             video_path = f"{tempfile.gettempdir()}/{video_id}.mp4"
             description = info.get('description', '')
+            title = info.get('title', '')
         
         try:
             # Split transcription into 60-second scenes
@@ -105,21 +107,46 @@ def analyze_video_content(
             words_per_scene = 150  # 150 words per minute
             scenes = []
             
+            # Create an agent for scene analysis
+            scene_analyzer = Agent(
+                name="Scene Analyzer",
+                role="Analyze video scenes for content and sponsor mentions",
+                model=OpenAIChat(id="gpt-4.1-mini"),
+                instructions=[
+                    "Analyze the given scene text and provide:",
+                    "1. A brief, informative summary of what was discussed in the scene",
+                    "2. If any sponsor/brand was mentioned in this specific scene, return the sponsor name",
+                    "3. If no sponsor was mentioned, return an empty string",
+                    "Return the response in JSON format with 'summary' and 'sponsor' fields."
+                ]
+            )
+            
             for i in range(0, len(words), words_per_scene):
                 scene_words = words[i:i + words_per_scene]
                 scene_text = ' '.join(scene_words)
                 
-                # Create a brief summary using the first sentence or up to 50 chars
-                summary = scene_text.split('.')[0][:50] + '...'
+                # Get scene analysis from LLM
+                scene_analysis = scene_analyzer.run(f"Scene text: {scene_text}")
+                
+                # Parse the LLM response
+                try:
+                    analysis_data = eval(scene_analysis.content)  # Convert string to dict
+                    summary = analysis_data.get('summary', '')
+                    sponsor = analysis_data.get('sponsor', '')
+                except:
+                    # Fallback in case of parsing error
+                    summary = scene_text.split('.')[0][:50] + '...'
+                    sponsor = ''
                 
                 scenes.append({
                     'start': i // words_per_scene * 60,
                     'end': (i // words_per_scene + 1) * 60,
-                    'text': scene_text,
-                    'summary': summary
+                    #'text': scene_text,
+                    #'summary': summary,
+                    'sponsor': sponsor
                 })
             
-            # Use Agno agent with GPT-4.1-mini for sponsor detection
+            # Use Agno agent with GPT-4.1-mini for overall sponsor detection
             sponsor_agent = Agent(
                 name="Sponsor Detector",
                 role="Detect sponsors from video descriptions",
@@ -141,7 +168,11 @@ def analyze_video_content(
             
             return {
                 "scenes": scenes,
-                "sponsors": sponsors
+                "sponsors": sponsors,
+                "metadata": {
+                    "title": title,
+                    "description": description
+                }
             }
             
         finally:

@@ -234,7 +234,7 @@ def fetch_videos(
 
 @tool(
     name="fetch_video_statistics",
-    description="Fetches statistics (views, likes, comments, favorites) for recent videos on a YouTube channel.",
+    description="Fetches statistics (views, likes, comments, favorites) for recent videos on a YouTube channel, filtered by recency and duration.",
     show_result=True,
     cache_results=True,
     cache_ttl=3600,
@@ -251,7 +251,15 @@ def fetch_video_statistics(
         The maximum number of videos to fetch statistics for. 
         This value controls how many recent videos will be analyzed.
         Default is 10, but can be set to any integer value.
-    """ ] = 10
+    """ ] = 10,
+    months: Annotated[int, """
+        Only include videos published within this number of months.
+        Default is 6 months.
+    """ ] = 6,
+    min_duration_minutes: Annotated[int, """
+        Only include videos that are at least this many minutes long.
+        Default is 3 minutes.
+    """ ] = 3
 ) -> List[Dict]:
     """
     Fetch statistics for recent videos on a channel.
@@ -259,6 +267,8 @@ def fetch_video_statistics(
     Args:
         channel_id (str): The YouTube channel ID
         max_results (int): Maximum number of videos to fetch statistics for (default: 10)
+        months (int): Only include videos from the last X months (default: 6)
+        min_duration_minutes (int): Minimum video duration in minutes (default: 3)
         
     Returns:
         List[Dict]: List of video statistics including:
@@ -267,8 +277,10 @@ def fetch_video_statistics(
             - likeCount: Number of likes
             - commentCount: Number of comments
             - favoriteCount: Number of times the video was favorited
+            - durationMinutes: Duration of the video in minutes
+            - publishedAt: Publication date of the video
     """
-    return _fetch_video_statistics(channel_id, max_results)
+    return _fetch_video_statistics(channel_id, max_results, months, min_duration_minutes)
 
 @tool(
     name="fetch_comments",
