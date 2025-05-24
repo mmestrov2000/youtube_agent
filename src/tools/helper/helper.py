@@ -1,10 +1,19 @@
 import os
 import yt_dlp
 import re
-from typing import Dict, List
+from typing import Dict, List, Union, Tuple, Literal
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+import numpy as np
+from scipy import stats
+from textblob import TextBlob
+import logging
+import requests
+from io import BytesIO
+from PIL import Image
+import torch
+from transformers import CLIPProcessor, CLIPModel
 
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
@@ -12,6 +21,140 @@ from agno.models.openai import OpenAIChat
 import whisper
 import tempfile
 
+from agno.tools import tool
+from typing import Annotated
+
+# ─── Logging setup ─────────────────────────────────────────────────────────────
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize CLIP model and processor globally
+CLIP_MODEL_NAME = "openai/clip-vit-large-patch14"
+logger.info(f"Loading CLIP model {CLIP_MODEL_NAME}…")
+model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
+processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+
+# Global parameters for thumbnail analysis
+TEMPERATURE = 0.07
+SCALE = 5.0
+
+# Prompts covering design, clarity, emotion, composition
+POSITIVE_PROMPTS = [
+    "eye-catching thumbnail",
+    "bold, vibrant colors",
+    "clear, readable text",
+    "prominent faces",
+    "professional design"
+]
+NEGATIVE_PROMPTS = [
+    "blurry or out of focus",
+    "dark or underexposed",
+    "dull colors",
+    "small or unreadable text",
+    "cluttered layout"
+]
+
+def _download_image(url: str) -> Image.Image:
+    resp = requests.get(url, timeout=5)
+    resp.raise_for_status()
+    return Image.open(BytesIO(resp.content)).convert("RGB")
+
+def _sentiment_score(texts: Union[str, List[str]]) -> float:
+    """
+    Calculate the average sentiment score for a single text or a list of texts using TextBlob.
+    The sentiment score ranges from -1.0 (most negative) to 1.0 (most positive).
+    """
+    # Normalize input to list
+    if isinstance(texts, str):
+        texts = [texts]
+    if not texts:
+        raise ValueError("Input text or list of texts cannot be empty")
+        
+    # Calculate sentiment polarity for each text
+    sentiments = [TextBlob(text).sentiment.polarity for text in texts]
+    
+    # Compute and return the mean sentiment score
+    return float(np.mean(sentiments))
+
+def _score_thumbnail(thumbnail_url: str) -> float:
+    """
+    Compute a 0–1 score for how "attractive" a thumbnail is.
+    """
+    try:
+        logger.info(f"Scoring thumbnail: {thumbnail_url}")
+        img = _download_image(thumbnail_url)
+
+        texts = POSITIVE_PROMPTS + NEGATIVE_PROMPTS
+        inputs = processor(
+            images=img,
+            text=texts,
+            return_tensors="pt",
+            padding=True
+        )
+        
+        # Get and normalize features
+        img_feats = model.get_image_features(inputs["pixel_values"])
+        txt_feats = model.get_text_features(inputs["input_ids"])
+        img_feats = img_feats / img_feats.norm(dim=-1, keepdim=True)
+        txt_feats = txt_feats / txt_feats.norm(dim=-1, keepdim=True)
+
+        # similarity logits
+        logits = (img_feats @ txt_feats.T) / TEMPERATURE  # shape (1, N_prompts)
+        logits = logits.squeeze(0)  # shape (N_prompts,)
+
+        # Debug: log a few values
+        for p, score in zip(texts, logits.tolist()):
+            logger.debug(f"  '{p}': {score:.3f}")
+
+        n_pos = len(POSITIVE_PROMPTS)
+        pos_mean = logits[:n_pos].mean()
+        neg_mean = logits[n_pos:].mean()
+        diff = pos_mean - neg_mean
+
+        # sigmoid normalization
+        score = torch.sigmoid(diff * SCALE).item()
+        logger.info(f"Thumbnail score → {score:.4f}")
+        return float(score)
+
+    except Exception as e:
+        logger.error(f"Failed to score thumbnail: {e}")
+        raise Exception(f"Failed to score thumbnail: {str(e)}")
+
+def _predict_next_video_views(
+    historical_views: List[int],
+    confidence_level: float = 0.90,
+    interval_type: Literal["lower", "upper", "two-sided"] = "two-sided"
+) -> Tuple[float, float]:
+    """
+    Predict a one‑ or two‑sided confidence interval for the next video's view count,
+    assuming a log‑normal model.
+    """
+    if not historical_views:
+        raise ValueError("Historical views list cannot be empty")
+    views = np.array(historical_views, dtype=float)
+    if np.any(views <= 0):
+        raise ValueError("All view counts must be positive to fit a log‑normal")
+
+    # Fit a log‑normal: returns (shape, loc, scale)
+    shape, loc, scale = stats.lognorm.fit(views, floc=0)
+
+    alpha = 1.0 - confidence_level
+
+    if interval_type == "lower":
+        # one‑sided lower: find the α‑quantile so P(X ≥ L)=confidence_level
+        L = stats.lognorm.ppf(alpha, shape, loc=loc, scale=scale)
+        return float(L), float("inf")
+
+    elif interval_type == "upper":
+        # one‑sided upper: find the confidence_level‑quantile so P(X ≤ U)=confidence_level
+        U = stats.lognorm.ppf(confidence_level, shape, loc=loc, scale=scale)
+        return float("-inf"), float(U)
+
+    elif interval_type == "two-sided":
+        # central interval: cut off α/2 in each tail
+        lower_q = stats.lognorm.ppf(alpha / 2, shape, loc=loc, scale=scale)
+        upper_q = stats.lognorm.ppf(1 - alpha / 2, shape, loc=loc, scale=scale)
+        return float(lower_q), float(upper_q)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -428,16 +571,19 @@ def _video_to_text(video_id: str) -> str:
     model_size = "base"
     whisper_model = whisper.load_model(model_size)
     
-    # Download video
+    # Download video with more reliable format options
     ydl_opts = {
-        'format': 'best[ext=mp4]',
-        'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s'
+        'format': 'bestaudio/best',  # Changed from 'best[ext=mp4]' to be more flexible
+        'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s',
+        'quiet': False,
+        'no_warnings': False,
+        'progress': True
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         url = f"https://www.youtube.com/watch?v={video_id}"
         info = ydl.extract_info(url, download=True)
-        video_path = f"{tempfile.gettempdir()}/{video_id}.mp4"
+        video_path = f"{tempfile.gettempdir()}/{video_id}.{info['ext']}"
     
     try:
         # Transcribe the video
@@ -458,16 +604,19 @@ def _analyze_video_content(video_id: str) -> Dict:
         # Get video transcription
         transcription = _video_to_text(video_id)
         
-        # Download video for metadata
+        # Download video for metadata with the same format settings that work
         ydl_opts = {
-            'format': 'best[ext=mp4]',
-            'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s'
+            'format': 'bestaudio/best',  # Using the same format that works in _video_to_text
+            'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s',
+            'quiet': False,
+            'no_warnings': False,
+            'progress': True
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             url = f"https://www.youtube.com/watch?v={video_id}"
             info = ydl.extract_info(url, download=True)
-            video_path = f"{tempfile.gettempdir()}/{video_id}.mp4"
+            video_path = f"{tempfile.gettempdir()}/{video_id}.{info['ext']}"
             description = info.get('description', '')
             title = info.get('title', '')
         
@@ -512,8 +661,6 @@ def _analyze_video_content(video_id: str) -> Dict:
                 scenes.append({
                     'start': i // words_per_scene * 60,
                     'end': (i // words_per_scene + 1) * 60,
-                    #'text': scene_text,
-                    #'summary': summary,
                     'sponsor': sponsor
                 })
             
@@ -553,3 +700,75 @@ def _analyze_video_content(video_id: str) -> Dict:
                 
     except Exception as e:
         raise Exception(f"Failed to analyze video content: {str(e)}")
+
+@tool(
+    name="sentiment_score",
+    description="Calculate the average sentiment score for text using TextBlob's sentiment analysis.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
+def sentiment_score(
+    texts: Annotated[Union[str, List[str]], """
+        A single text string or a list of text strings to analyze.
+        The function will calculate the average sentiment across all provided texts.
+        Example: "Great video!" or ["Great video!", "This was terrible", "I learned a lot"]
+    """]
+) -> float:
+    """
+    Calculate the average sentiment score for a single text or a list of texts using TextBlob.
+    The sentiment score ranges from -1.0 (most negative) to 1.0 (most positive).
+    """
+    return _sentiment_score(texts)
+
+@tool(
+    name="score_thumbnail",
+    description="Analyzes a YouTube video thumbnail and returns a score indicating its visual appeal and effectiveness.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
+def score_thumbnail(
+    thumbnail_url: Annotated[str, """
+        The URL of the YouTube video thumbnail to analyze.
+        This should be a direct URL to the image file.
+        Example: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'
+    """]
+) -> float:
+    """
+    Compute a 0–1 score for how "attractive" a thumbnail is.
+    """
+    return _score_thumbnail(thumbnail_url)
+
+@tool(
+    name="predict_next_video_views",
+    description="Predict view count ranges for the next video based on historical view data using a log-normal model.",
+    show_result=True,
+    cache_results=True,
+    cache_ttl=3600,
+    cache_dir="/tmp/agno_cache"
+)
+def predict_next_video_views(
+    historical_views: Annotated[List[int], """
+        List of past view counts for videos. All values must be positive integers.
+        Example: [1000, 2000, 1500, 3000]
+    """],
+    confidence_level: Annotated[float, """
+        The desired confidence level for the prediction interval.
+        Must be between 0 and 1. Default is 0.90 (90% confidence).
+    """] = 0.90,
+    interval_type: Annotated[Literal["lower", "upper", "two-sided"], """
+        The type of confidence interval to compute:
+        - "lower": one-sided lower bound (L, ∞)
+        - "upper": one-sided upper bound (-∞, U)
+        - "two-sided": central interval (L, U)
+        Default is "two-sided".
+    """] = "two-sided"
+) -> Tuple[float, float]:
+    """
+    Predict a one‑ or two‑sided confidence interval for the next video's view count,
+    assuming a log‑normal model.
+    """
+    return _predict_next_video_views(historical_views, confidence_level, interval_type)
