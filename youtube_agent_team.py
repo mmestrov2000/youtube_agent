@@ -119,25 +119,42 @@ risk_analyzer = Agent(
     markdown=True
 )
 
-# Agent 6: Python Script Generator
-python_coder = Agent(
-    name="Python Script Generator",
-    role="Generates and executes Python scripts based on user queries.",
+# Agent 6: Python Script Executor
+python_executor = Agent(
+    name="Python Script Executor",
+    role="Generates, executes, and manages Python scripts, reports, and graphs.",
     model=OpenAIChat(id="gpt-4.1-mini"),
-    tools=[PythonTools(base_dir=Path("tmp/python")), predict_next_video_views],
+    tools=[PythonTools(base_dir=Path("tmp/python"))],
     instructions=[
-        "Use the PythonTools to generate and execute Python scripts.",
-        "Respond with well-commented Python code that solves the user's request.",
-        "Only write code that is safe and relevant to the task.",
-        "Avoid unnecessary output; show only the results or saved file paths.",
-        "If a graph is generated, save it using matplotlib instead of displaying it.",
-        "For predicting the views of the next video use the tool predict_next_video_views."
+        "Use PythonTools to write and run Python scripts for any user request.",
+        "Generate reports and save graphs via matplotlib to files, not inline displays.",
+        "Use the predict_next_video_views tool for view predictions.",
+        "For metric calculations, request data from the Metrics Calculator agent.",
+        "Ensure scripts use real data outputs from the Metrics Calculator agent."
     ],
     show_tool_calls=True,
     markdown=True
 )
 
-# Agent 7: Sentiment Analyzer
+# Agent 7: Metrics Calculator
+metrics_calculator = Agent(
+    name="Metrics Calculator",
+    role="Calculates influencer marketing metrics using real data provided.",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[PythonTools(base_dir=Path("tmp/python"))],
+    instructions=[
+        "Receive real data outputs (views, likes, comments, etc.) from Python Script Executor agent.",
+        "Calculate CPM, CPV, CPA, engagement rate, and other influencer marketing metrics.",
+        "Use the median rather than mean when estimating values like expected views.",
+        "For the views estimation, use strictly the MEDIAN because we're always estimating.",
+        "Do not generate or simulate synthetic data; only work with provided data.",
+        "Always return a structured JSON with each metric."
+    ],
+    show_tool_calls=False,
+    markdown=False
+)
+
+# Agent 8: Sentiment Analyzer
 sentiment_analyzer = Agent(
     name="Sentiment Analyzer",
     role="Assigns sentiment scores to text or list of texts using the sentiment_score tool",
@@ -153,12 +170,12 @@ sentiment_analyzer = Agent(
     markdown=True
 )
 
-# Agent 8: Video Statistics Specialist
+# Agent 9: Video Statistics Specialist
 video_statistics_specialist = Agent(
     name="Video Statistics Specialist",
     role="Analyzes engagement statistics for recent videos on a YouTube channel",
     model=OpenAIChat(id="gpt-4.1-mini"),
-    tools=[resolve_channel_id, fetch_video_statistics],
+    tools=[PythonTools(base_dir=Path("tmp/python")), resolve_channel_id, fetch_video_statistics],
     instructions=[
         "You are a video statistics specialist focused on analyzing engagement metrics.",
         "First resolve the channel identifier to get the official channel ID.",
@@ -170,7 +187,7 @@ video_statistics_specialist = Agent(
     markdown=True
 )
 
-# Agent 9: Video Content Analyzer
+# Agent 10: Video Content Analyzer
 video_content_analyzer = Agent(
     name="Video Content Analyzer",
     role="Analyzes video content for transcription and brand integration detection",
@@ -208,7 +225,8 @@ youtube_team = Team(
         video_collector,
         channel_searcher,
         risk_analyzer,
-        python_coder,
+        python_executor,
+        metrics_calculator,
         sentiment_analyzer,
         video_statistics_specialist,
         video_content_analyzer
@@ -220,21 +238,26 @@ youtube_team = Team(
         "You are a team of specialized YouTube data collection agents.",
         "Coordinate between different agents to provide comprehensive YouTube data analysis.",
         "Use the appropriate agent for each specific task:",
-        "1. Use Channel ID Resolver when you need to find the channel ID of the YouTube channel",
-        "2. Use Channel Data Collector for comprehensive channel analysis",
-        "3. Use Video Data Collector for detailed video analysis",
-        "4. Use Channel Search Specialist for discovering relevant channels",
-        "5. Use Risk Analysis Agent for evaluating potential risks and brand safety concerns",
-        "6. Use Python Script Generator to execute Python scripts based on user queries. You can use this agent to do any calculations with numbers also.",
-        "7. Use Sentiment Analyzer when you need to compute sentiment scores for text or comments.",
-        "8. Use Video Statistics Specialist when you need to analyze engagement metrics for recent videos.",
-        "9. Use Video Content Analyzer when you need to transcribe videos or detect brand integrations.",
+        "1. Use 'channel_resolver' agent when you need to find the channel ID of the YouTube channel",
+        "2. Use 'channel_collector' agent for getting basic info for the channel and for getting the info on the videos of the channel.",
+        "3. Use 'video_collector' agent for detailed video analysis",
+        "4. Use 'channel_searcher' agent for discovering relevant channels",
+        "5. Use 'risk_analyzer' agent for evaluating potential risks and brand safety concerns",
+        "6. Use 'python_executor' agent to execute Python scripts or calculations based on user queries. You can use this agent to do any calculations with numbers also, and specifically to do calculations around metrics in the influencer marketing industry, lika CPM, etc.",
+        "7. Use 'metrics_calculator' agent to calculate and work with the metrics like CPM, CPV, CPA, engagement rate, etc. Provide it all the context data from the previous agents, and don't give it any unnecessary instructions.",
+        "8. Use 'sentiment_analyzer' agent when you need to compute sentiment scores for text or comments.",
+        "9. Use 'video_statistics_specialist' agent when you need to analyze engagement metrics for recent videos: (views, likes, comments, published time)",
+        "10. Use 'video_content_analyzer' agent when you need to transcribe or analyze the content of one specific video. Use it only if you have the video id.",
         "Present all data in a clear, organized format using markdown.",
         "Ensure proper coordination between agents when tasks require multiple steps.",
-        "Maintain context between different analysis steps."
+        "Do not give any unnecessary and made up instructions to the agents. Make sure you ask only for what you need without telling other agents how to do their job.",
+        "Maintain context between different analysis steps.",
+        "Use strictly the tool set_shared_context after each agent to set the context for the next agent.",
+        "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent."
     ],
     show_members_responses=True,
-    enable_agentic_context=True  # Enable shared context between agents
+    enable_agentic_context=True,
+    debug_mode=True
 )
 
 # Example usage
@@ -268,6 +291,14 @@ if __name__ == "__main__":
     Analyze the statistics (views, likes, comments, published time) of the last 40 videos of the channel @CashJordan. Write a python code to analyze the views per day of the week and per time of the day. Plot the results in a graph.
     """
 
+    team_prompt_4 = "What is the maximum price we should pay @CashJordan for the next video to keep expected CPM under $30? For estimation, use the latest 10 videos."
+
+    team_prompt_5 = "Show me which brands worked with @CashJordan over the last month."
+
+    team_prompt_6 = "Generate a detailed report on @CashJordan for my team."
+
+    team_prompt_7 = "Give me a deep analysis of the latest video from Geekyranjit."
+
     # Individual agent tests (commented out)
     # channel_resolver.print_response(channel_resolver_prompt, stream=True)
     # channel_collector.print_response(channel_collector_prompt, stream=True)
@@ -280,6 +311,6 @@ if __name__ == "__main__":
     # video_content_analyzer.print_response(video_content_prompt, stream=True)
 
     # Team analysis test
-    youtube_team.print_response(team_prompt_1, stream=True)
+    # youtube_team.print_response(team_prompt_1, stream=True)
     # youtube_team.print_response(team_prompt_2, stream=True)
-    youtube_team.print_response(team_prompt_3, stream=True)
+    youtube_team.print_response(team_prompt_7, stream=True)
