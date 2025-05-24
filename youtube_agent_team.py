@@ -49,6 +49,7 @@ channel_collector = Agent(
     role="Collects comprehensive data about YouTube channels",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[
+        resolve_channel_id,
         search_youtube_channel_videos,
         fetch_channel_info,
         fetch_videos,
@@ -177,16 +178,21 @@ video_content_analyzer = Agent(
     tools=[resolve_channel_id, video_to_text, analyze_video_content],
     instructions=[
         "You are a video content analysis specialist focused on transcribing videos and detecting brand integrations.",
-        "First resolve any channel identifiers to get the official channel ID when needed.",
         "Use video_to_text to transcribe video content when requested.",
         "Use analyze_video_content to detect scenes, sponsors, and visual elements in videos.",
-        "Present your analysis in a clear, structured format with the following sections:",
-        "1. Video Transcription: Full text content of the video",
-        "2. Scene Analysis: Detected scenes with timestamps",
-        "3. Brand Integration Analysis: Detected sponsor segments and brand mentions",
-        "4. Visual Elements: Notable visual elements detected in the video",
-        "Focus on providing comprehensive content analysis and brand integration detection."
+        "When analyzing video content:",
+        "1. Process the raw tool output and present it in a clear, readable format",
+        "2. For sponsor detection, clearly indicate when and where sponsors appear in the video",
+        "3. Format timestamps in minutes:seconds format for better readability",
+        "4. Group consecutive scenes with the same sponsor together",
+        "5. Provide a clear summary of findings at the end",
+        "6. If asked about specific timestamps or sponsor mentions, highlight those details prominently"
     ],
+    expected_output="""Present your analysis in a clear markdown format with:
+        1. A summary of findings
+        2. Sponsor mentions with timestamps
+        3. Any specific details requested by the user
+        4. Clear formatting and organization of the information""",
     show_tool_calls=True,
     markdown=True
 )
@@ -242,8 +248,7 @@ if __name__ == "__main__":
     python_coder_prompt = "Calculate average views for last 5 videos of @BenAI92"
     sentiment_analyzer_prompt = "Analyze sentiment of comments for video 'ngLyX54e1LU'"
     video_stats_prompt = "Get statistics for last 10 videos of @BenAI92"
-    video_content_prompt = "Analyze content and sponsors in video 'ngLyX54e1LU'"
-
+    video_content_prompt = "Can you find what is the main sponsor of the video 'mqPnSt34Qks' - by looking at the video description. Then I want you to find the time where this brand is mentioned for the first time."
     # Complex prompts for team analysis
     team_prompt_1 = """
     Find a YouTube channel @LslieLawson, summarize the channel info. Take last 7 videos with the views count of this YouTube channel, 
@@ -257,6 +262,10 @@ if __name__ == "__main__":
     team_prompt_2 = """
     Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 videos on the topic of 
     automation in sales on this channel. For this video you should find this info: published date, views count, likes count, comments count.
+    """
+
+    team_prompt_3 = """
+    Analyze the statistics (views, likes, comments, published time) of the last 40 videos of the channel @CashJordan. Write a python code to analyze the views per day of the week and per time of the day. Plot the results in a graph.
     """
 
     # Individual agent tests (commented out)
@@ -273,3 +282,4 @@ if __name__ == "__main__":
     # Team analysis test
     youtube_team.print_response(team_prompt_1, stream=True)
     # youtube_team.print_response(team_prompt_2, stream=True)
+    youtube_team.print_response(team_prompt_3, stream=True)

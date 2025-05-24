@@ -2,6 +2,9 @@ import os
 import requests
 from datetime import datetime
 from src.tools.youtube_api import resolve_channel_id, fetch_channel_info, fetch_videos, search_channel_videos, download_video
+import dotenv
+
+dotenv.load_dotenv()
 
 def download_thumbnail(url: str, video_id: str):
     """Download and save a video thumbnail."""

@@ -6,6 +6,9 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+
 import whisper
 import tempfile
 
@@ -449,3 +452,104 @@ def _video_to_text(video_id: str) -> str:
         if os.path.exists(video_path):
             os.remove(video_path)
         raise e
+    
+def _analyze_video_content(video_id: str) -> Dict:
+    try:
+        # Get video transcription
+        transcription = _video_to_text(video_id)
+        
+        # Download video for metadata
+        ydl_opts = {
+            'format': 'best[ext=mp4]',
+            'outtmpl': f'{tempfile.gettempdir()}/%(id)s.%(ext)s'
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            info = ydl.extract_info(url, download=True)
+            video_path = f"{tempfile.gettempdir()}/{video_id}.mp4"
+            description = info.get('description', '')
+            title = info.get('title', '')
+        
+        try:
+            # Split transcription into 60-second scenes
+            # Assuming average speaking rate of 150 words per minute
+            words = transcription.split()
+            words_per_scene = 150  # 150 words per minute
+            scenes = []
+            
+            # Create an agent for scene analysis
+            scene_analyzer = Agent(
+                name="Scene Analyzer",
+                role="Analyze video scenes for content and sponsor mentions",
+                model=OpenAIChat(id="gpt-4.1-mini"),
+                instructions=[
+                    "Analyze the given scene text and provide:",
+                    "1. A brief, informative summary of what was discussed in the scene",
+                    "2. If any sponsor/brand was mentioned in this specific scene, return the sponsor name",
+                    "3. If no sponsor was mentioned, return an empty string",
+                    "Return the response in JSON format with 'summary' and 'sponsor' fields."
+                ]
+            )
+            
+            for i in range(0, len(words), words_per_scene):
+                scene_words = words[i:i + words_per_scene]
+                scene_text = ' '.join(scene_words)
+                
+                # Get scene analysis from LLM
+                scene_analysis = scene_analyzer.run(f"Scene text: {scene_text}")
+                
+                # Parse the LLM response
+                try:
+                    analysis_data = eval(scene_analysis.content)  # Convert string to dict
+                    summary = analysis_data.get('summary', '')
+                    sponsor = analysis_data.get('sponsor', '')
+                except:
+                    # Fallback in case of parsing error
+                    summary = scene_text.split('.')[0][:50] + '...'
+                    sponsor = ''
+                
+                scenes.append({
+                    'start': i // words_per_scene * 60,
+                    'end': (i // words_per_scene + 1) * 60,
+                    #'text': scene_text,
+                    #'summary': summary,
+                    'sponsor': sponsor
+                })
+            
+            # Use Agno agent with GPT-4.1-mini for overall sponsor detection
+            sponsor_agent = Agent(
+                name="Sponsor Detector",
+                role="Detect sponsors from video descriptions",
+                model=OpenAIChat(id="gpt-4.1-mini"),
+                instructions=[
+                    "Analyze the video description and list all sponsors/brands mentioned.",
+                    "Return only a comma-separated list of sponsor names, nothing else.",
+                    "Be precise and only include actual sponsors, not just mentioned brands."
+                ]
+            )
+            
+            sponsor_response = sponsor_agent.run(f"Video description: {description}")
+            
+            # Parse sponsor response
+            sponsors = []
+            if sponsor_response and sponsor_response.content:
+                sponsor_names = sponsor_response.content.strip().split(',')
+                sponsors = [{'name': name.strip()} for name in sponsor_names if name.strip()]
+            
+            return {
+                "scenes": scenes,
+                "sponsors": sponsors,
+                "metadata": {
+                    "title": title,
+                    "description": description
+                }
+            }
+            
+        finally:
+            # Clean up the downloaded video
+            if os.path.exists(video_path):
+                os.remove(video_path)
+                
+    except Exception as e:
+        raise Exception(f"Failed to analyze video content: {str(e)}")

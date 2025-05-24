@@ -54,5 +54,4 @@ def predict_next_video_views(
         # central interval: cut off α/2 in each tail
         lower_q = stats.lognorm.ppf(alpha / 2, shape, loc=loc, scale=scale)
         upper_q = stats.lognorm.ppf(1 - alpha / 2, shape, loc=loc, scale=scale)
-        print(float(lower_q), float(upper_q))
         return float(lower_q), float(upper_q)
