@@ -413,22 +413,54 @@ def _introspect_channel(identifier: str, max_videos: int = 10) -> Dict:
     except Exception as e:
         return {"error": str(e)}
     
-def _search_youtube_channels(query: str, max_results: int = 5) -> List[Dict]:
+def _search_youtube_channels(query: str, max_results: int = 5, min_subscribers: int = 1000) -> List[Dict]:
     try:
+        # First, search for channels
         request = youtube_api.youtube.search().list(
             part="snippet",
             q=query,
             type="channel",
-            maxResults=max_results
+            maxResults=50,  # Get more results initially to filter by subscribers
+            order="relevance"
         )
         response = request.execute()
-
-        return [{
-            "channelId": item['id']['channelId'],
-            "title": item['snippet']['title'],
-            "description": item['snippet']['description'],
-            "thumbnails": item['snippet']['thumbnails']
-        } for item in response.get('items', [])]
+        
+        channels = []
+        for item in response.get('items', []):
+            channel_id = item['id']['channelId']
+            
+            # Get channel statistics
+            channel_request = youtube_api.youtube.channels().list(
+                part="statistics,snippet",
+                id=channel_id
+            )
+            channel_response = channel_request.execute()
+            
+            if not channel_response.get('items'):
+                continue
+                
+            channel_data = channel_response['items'][0]
+            subscriber_count = int(channel_data['statistics'].get('subscriberCount', 0))
+            
+            # Only include channels that meet the subscriber threshold
+            if subscriber_count >= min_subscribers:
+                channels.append({
+                    "channelId": channel_id,
+                    "title": item['snippet']['title'],
+                    "description": item['snippet']['description'],
+                    "thumbnails": item['snippet']['thumbnails'],
+                    "subscriberCount": subscriber_count,
+                    "viewCount": int(channel_data['statistics'].get('viewCount', 0)),
+                    "videoCount": int(channel_data['statistics'].get('videoCount', 0)),
+                    "customUrl": channel_data['snippet'].get('customUrl', ''),
+                    "publishedAt": channel_data['snippet'].get('publishedAt', '')
+                })
+        
+        # Sort channels by subscriber count in descending order
+        channels.sort(key=lambda x: x['subscriberCount'], reverse=True)
+        
+        # Return only the requested number of results
+        return channels[:max_results]
 
     except Exception as e:
         return [{"error": str(e)}]
