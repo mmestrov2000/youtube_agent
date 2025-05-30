@@ -31,7 +31,7 @@ load_dotenv()
 
 # Agent 1: Channel ID Resolver
 channel_resolver = Agent(
-    name="Channel ID Resolver",
+    name="channel_resolver",
     role="Resolves YouTube channel identifiers to their official channel IDs",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[resolve_channel_id],
@@ -45,7 +45,7 @@ channel_resolver = Agent(
 
 # Agent 2: Channel Data Collector
 channel_collector = Agent(
-    name="Channel Data Collector",
+    name="channel_collector",
     role="Collects comprehensive data about YouTube channels",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[
@@ -64,64 +64,126 @@ channel_collector = Agent(
     markdown=True
 )
 
-# Agent 3: Video Data Collector
-video_collector = Agent(
-    name="Video Data Collector",
-    role="Collects detailed information about specific YouTube videos",
+# Agent 3: Video Analysis Specialist
+video_analysis_specialist = Agent(
+    name="video_analysis_specialist",
+    role="Comprehensive video analysis including metadata, comments, transcription, and content analysis",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[
         fetch_video_details,
-        fetch_comments
+        fetch_comments,
+        video_to_text,
+        analyze_video_content
     ],
     instructions=[
-        "You are responsible for collecting detailed information about specific YouTube videos.",
-        "You can fetch video metadata and comments.",
-        "Present the data in a structured, easy-to-read format.",
-        "Focus on providing comprehensive video analysis."
+        "You are a comprehensive video analysis specialist responsible for all aspects of video analysis.",
+        "You can perform the following analyses when given a video ID:",
+        "1. Fetch video metadata and details using fetch_video_details",
+        "2. Collect and analyze comments using fetch_comments",
+        "3. Transcribe video content using video_to_text",
+        "4. Analyze video content for scenes, sponsors, and visual elements using analyze_video_content",
+        "When analyzing video content:",
+        "1. Process the raw tool output and present it in a clear, readable format",
+        "2. For sponsor detection, clearly indicate when and where sponsors appear in the video",
+        "3. Format timestamps in minutes:seconds format for better readability",
+        "4. Group consecutive scenes with the same sponsor together",
+        "5. Provide a clear summary of findings at the end",
+        "6. If asked about specific timestamps or sponsor mentions, highlight those details prominently",
+        "Present all data in a structured, easy-to-read format using markdown."
     ],
+    expected_output="""Present your analysis in a clear markdown format with:
+        1. Video metadata and basic information
+        2. Comment analysis and insights
+        3. Video transcription (when requested)
+        4. Content analysis including sponsor mentions and timestamps
+        5. A comprehensive summary of findings""",
+    show_tool_calls=True,
     markdown=True
 )
 
 # Agent 4: Channel Search Specialist
 channel_searcher = Agent(
-    name="Channel Search Specialist",
-    role="Searches and discovers YouTube channels",
+    name="channel_searcher",
+    role="Searches and discovers YouTube channels using both YouTube and web search",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[search_youtube_channels],
     instructions=[
-        "You are responsible for searching and discovering YouTube channels.",
-        "Use the search_youtube_channels tool to find relevant channels based on queries.",
-        "Present search results in a clear, organized manner.",
-        "Focus on finding the most relevant channels for given topics."
+        "You are responsible for comprehensive channel discovery using both YouTube and web search.",
+        "For YouTube channel search:",
+        "1. Use the search_youtube_channels tool to find relevant channels based on queries",
+        "2. Present YouTube search results in a clear, organized manner",
+        "3. Focus on finding the most relevant channels for given topics",
+        "For web-based channel discovery:",
+        "1. Use TavilyTools to search the web for relevant YouTube channels",
+        "2. Look for articles, lists, and recommendations about YouTube channels",
+        "3. Cross-reference web findings with YouTube search results",
+        "4. Verify channel existence and relevance",
+        "Combine both sources to provide:",
+        "1. A comprehensive list of relevant channels",
+        "2. Context about why each channel is relevant",
+        "3. Additional insights from web sources about the channels",
+        "4. Clear organization of results by source and relevance",
+        "For query for the tool search_youtube_channels, always use the short term that a person would realistically search on youtube to find relevant video on this topic. For example, if the topic is 'AI sales automation', then the query should be 'AI sales automation'."
     ],
+    expected_output="""Present your findings in a clear markdown format with:
+        1. YouTube Search Results
+           - List of channels found through YouTube search
+           - Basic channel information
+           - Relevance to search query
+        2. Web Search Results
+           - Channels discovered through web search
+           - Additional context and insights
+           - Source credibility
+        3. Combined Analysis
+           - Cross-referenced results
+           - Overall recommendations
+           - Most promising channels""",
+    show_tool_calls=True,
     markdown=True
 )
 
-# Agent 5: Risk Analysis Agent
-risk_analyzer = Agent(
-    name="Risk Analysis Agent",
-    role="Analyzes potential risks associated with YouTube channels and influencers",
+# Agent 5: Risk and Sentiment Analysis Specialist
+risk_sentiment_analyzer = Agent(
+    name="risk_sentiment_analyzer",
+    role="Analyzes both potential risks and sentiment for YouTube channels, videos, and comments",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[TavilyTools(), sentiment_score],
     instructions=[
-        "You are a risk analyst for a company. You are given the influencer and you need to analyze is it a risk to the company.",
-        "Use Tavily to search web for at least 3 different topics with keywords like scandal, controversy, cancelled, etc. then summarize together all results. You should also determine the probability that these controversies are related to this specific influencer and not to another one.",
-        "Keep in mind that most influencers should be save, and keywords like these will always lead to controversies - and that's why you need to make sure that the controversies are related to this specific influencer and not to another one.",
-        "Use sentiment_score tool to analyze the sentiment of the comments and the videos.",
-        "At the end, return a JSON object with risk_score, confidence_score and brief_analysis.",
+        "You are a comprehensive risk and sentiment analysis specialist responsible for evaluating both brand safety and sentiment.",
+        "For risk analysis:",
+        "1. Use Tavily to search web for at least 3 different topics with keywords like scandal, controversy, cancelled, etc.",
+        "2. Summarize all results together and determine the probability that these controversies are related to the specific influencer.",
+        "3. Keep in mind that most influencers should be safe, and keywords like these will always lead to controversies - verify relevance carefully.",
+        "For sentiment analysis:",
+        "1. Use sentiment_score tool to analyze the sentiment of provided text (comments, video descriptions, etc.)",
+        "2. Provide both individual and aggregate sentiment scores when analyzing multiple items",
+        "3. Consider context when interpreting sentiment scores",
+        "At the end of your analysis, return a JSON object with:",
+        "1. risk_score: A numerical assessment of the overall risk level (0-1)",
+        "2. confidence_score: How confident you are in your risk assessment (0-1)",
+        "3. sentiment_score: The sentiment score for the analyzed content",
+        "4. brief_analysis: A concise summary of your findings and reasoning",
+        "5. verification_notes: How you verified the relevance of findings to this specific influencer"
     ],
-    expected_output="""Present your analysis in a clear markdown format with the following sections:",
-        "1. Risk Score (0-1): A numerical assessment of the overall risk level",
-        "2. Confidence Score (0-1): How confident you are in your risk assessment",
-        "3. Brief Analysis: A concise summary of your findings and reasoning",
-        "4. Verification Notes: How you verified the relevance of findings to this specific influencer""",
+    expected_output="""Present your analysis in a clear markdown format with the following sections:
+        1. Risk Assessment
+           - Risk Score (0-1) & one-liner explanation
+           - Confidence Score (0-1) & one-liner explanation
+           - Brief Analysis
+           - Verification Notes
+        2. Sentiment Analysis
+           - Individual/Group Sentiment Scores
+           - Context and Interpretation
+        3. Overall Assessment
+           - Combined Risk and Sentiment Insights
+           - Recommendations""",
     show_tool_calls=True,
     markdown=True
 )
 
 # Agent 6: Python Script Executor
 python_executor = Agent(
-    name="Python Script Executor",
+    name="python_executor",
     role="Generates, executes, and manages Python scripts, reports, and graphs.",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[PythonTools(base_dir=Path("tmp/python"))],
@@ -138,7 +200,7 @@ python_executor = Agent(
 
 # Agent 7: Metrics Calculator
 metrics_calculator = Agent(
-    name="Metrics Calculator",
+    name="metrics_calculator",
     role="Calculates influencer marketing metrics using real data provided.",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[PythonTools(base_dir=Path("tmp/python"))],
@@ -154,25 +216,9 @@ metrics_calculator = Agent(
     markdown=False
 )
 
-# Agent 8: Sentiment Analyzer
-sentiment_analyzer = Agent(
-    name="Sentiment Analyzer",
-    role="Assigns sentiment scores to text or list of texts using the sentiment_score tool",
-    model=OpenAIChat(id="gpt-4.1-mini"),
-    tools=[sentiment_score],
-    instructions=[
-        "You are a sentiment analyzer. You receive a single text or a list of texts (probably a list of YouTube comments) and must return a sentiment score.",
-        "Use the sentiment_score tool to compute the sentiment.",
-        "At the end, return a JSON object with field sentiment_score."
-    ],
-    expected_output="Present your output as JSON with field sentiment_score.",
-    show_tool_calls=True,
-    markdown=True
-)
-
-# Agent 9: Video Statistics Specialist
+# Agent 8: Video Statistics Specialist
 video_statistics_specialist = Agent(
-    name="Video Statistics Specialist",
+    name="video_statistics_specialist",
     role="Analyzes engagement statistics for recent videos on a YouTube channel",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[PythonTools(base_dir=Path("tmp/python")), resolve_channel_id, fetch_video_statistics],
@@ -180,36 +226,10 @@ video_statistics_specialist = Agent(
         "You are a video statistics specialist focused on analyzing engagement metrics.",
         "First resolve the channel identifier to get the official channel ID.",
         "Then fetch statistics for recent videos including views, likes, comments, and favorites.",
+        "If you need to do any calculations, use the python tools for it.",
         "Present the statistics in a clear, tabular format.",
         "Focus on providing insights about video performance and engagement patterns."
     ],
-    show_tool_calls=True,
-    markdown=True
-)
-
-# Agent 10: Video Content Analyzer
-video_content_analyzer = Agent(
-    name="Video Content Analyzer",
-    role="Analyzes video content for transcription and brand integration detection",
-    model=OpenAIChat(id="gpt-4.1-mini"),
-    tools=[resolve_channel_id, video_to_text, analyze_video_content],
-    instructions=[
-        "You are a video content analysis specialist focused on transcribing videos and detecting brand integrations.",
-        "Use video_to_text to transcribe video content when requested.",
-        "Use analyze_video_content to detect scenes, sponsors, and visual elements in videos.",
-        "When analyzing video content:",
-        "1. Process the raw tool output and present it in a clear, readable format",
-        "2. For sponsor detection, clearly indicate when and where sponsors appear in the video",
-        "3. Format timestamps in minutes:seconds format for better readability",
-        "4. Group consecutive scenes with the same sponsor together",
-        "5. Provide a clear summary of findings at the end",
-        "6. If asked about specific timestamps or sponsor mentions, highlight those details prominently"
-    ],
-    expected_output="""Present your analysis in a clear markdown format with:
-        1. A summary of findings
-        2. Sponsor mentions with timestamps
-        3. Any specific details requested by the user
-        4. Clear formatting and organization of the information""",
     show_tool_calls=True,
     markdown=True
 )
@@ -218,18 +238,16 @@ video_content_analyzer = Agent(
 youtube_team = Team(
     name="YouTube Analysis Team",
     mode="coordinate",  # Using coordinate mode to delegate tasks and synthesize responses
-    model=OpenAIChat(id="gpt-4o"),
+    model=OpenAIChat(id="gpt-4.1-mini"),
     members=[
         channel_resolver,
         channel_collector,
-        video_collector,
+        video_analysis_specialist,
         channel_searcher,
-        risk_analyzer,
+        risk_sentiment_analyzer,
         python_executor,
         metrics_calculator,
-        sentiment_analyzer,
-        video_statistics_specialist,
-        video_content_analyzer
+        video_statistics_specialist
     ],
     show_tool_calls=True,
     markdown=True,
@@ -237,80 +255,13 @@ youtube_team = Team(
     instructions=[
         "You are a team of specialized YouTube data collection agents.",
         "Coordinate between different agents to provide comprehensive YouTube data analysis.",
-        "Use the appropriate agent for each specific task:",
-        "1. Use 'channel_resolver' agent when you need to find the channel ID of the YouTube channel",
-        "2. Use 'channel_collector' agent for getting basic info for the channel and for getting the info on the videos of the channel.",
-        "3. Use 'video_collector' agent for detailed video analysis",
-        "4. Use 'channel_searcher' agent for discovering relevant channels",
-        "5. Use 'risk_analyzer' agent for evaluating potential risks and brand safety concerns",
-        "6. Use 'python_executor' agent to execute Python scripts or calculations based on user queries. You can use this agent to do any calculations with numbers also, and specifically to do calculations around metrics in the influencer marketing industry, lika CPM, etc.",
-        "7. Use 'metrics_calculator' agent to calculate and work with the metrics like CPM, CPV, CPA, engagement rate, etc. Provide it all the context data from the previous agents, and don't give it any unnecessary instructions.",
-        "8. Use 'sentiment_analyzer' agent when you need to compute sentiment scores for text or comments.",
-        "9. Use 'video_statistics_specialist' agent when you need to analyze engagement metrics for recent videos: (views, likes, comments, published time)",
-        "10. Use 'video_content_analyzer' agent when you need to transcribe or analyze the content of one specific video. Use it only if you have the video id.",
-        "Present all data in a clear, organized format using markdown.",
+        "Use the appropriate agent for each specific task.",
         "Ensure proper coordination between agents when tasks require multiple steps.",
-        "Do not give any unnecessary and made up instructions to the agents. Make sure you ask only for what you need without telling other agents how to do their job.",
-        "Maintain context between different analysis steps.",
-        "Use strictly the tool set_shared_context after each agent to set the context for the next agent.",
-        "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent."
+        "Make sure to give tasks to the agents in their scope in a way that they can understand and execute it.",
+        "Maintain context between different analysis steps. Use strictly the tool set_shared_context after each agent to set the context for the next agent.",
+        "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent.",
     ],
+    expected_output="Present all data in a clear, organized format using markdown.",
     show_members_responses=True,
     enable_agentic_context=True,
-    debug_mode=True
-)
-
-# Example usage
-if __name__ == "__main__":
-    # Basic prompts for individual agents
-    channel_resolver_prompt = "Resolve the channel ID for @BenAI92"
-    channel_collector_prompt = "Get basic info and last 5 videos for @BenAI92"
-    video_collector_prompt = "Get details and comments for video ID 'ngLyX54e1LU'"
-    channel_searcher_prompt = "Find channels about AI sales automation"
-    risk_analyzer_prompt = "Analyze risk for influencer Carryminati"
-    python_coder_prompt = "Calculate average views for last 5 videos of @BenAI92"
-    sentiment_analyzer_prompt = "Analyze sentiment of comments for video 'ngLyX54e1LU'"
-    video_stats_prompt = "Get statistics for last 10 videos of @BenAI92"
-    video_content_prompt = "Can you find what is the main sponsor of the video 'mqPnSt34Qks' - by looking at the video description. Then I want you to find the time where this brand is mentioned for the first time."
-    # Complex prompts for team analysis
-    team_prompt_1 = """
-    Find a YouTube channel @LslieLawson, summarize the channel info. Take last 7 videos with the views count of this YouTube channel, 
-    summarize the content and predict the 75% two-sided interval of the views for the next video. For every video take last 5 comments 
-    and give a sentiment score to each video. Do a web search to see if there is a risk working with this influencer. Return a detailed 
-    report where you'll write the summary of the channel, explain the content in detail and you can also save a graph where you'll plot 
-    the historical views and horizontal lines for lower and upper bound of 75% two-sided predicition interval. You can also plot the 
-    sentiment scores for the last 7 videos. Please include the risk analysis in this report. Nicely format the detailed report.
-    """
-
-    team_prompt_2 = """
-    Fetch basic info (title and description) of this channel: @BenAI92. When you found the channel, then find 3 videos on the topic of 
-    automation in sales on this channel. For this video you should find this info: published date, views count, likes count, comments count.
-    """
-
-    team_prompt_3 = """
-    Analyze the statistics (views, likes, comments, published time) of the last 40 videos of the channel @CashJordan. Write a python code to analyze the views per day of the week and per time of the day. Plot the results in a graph.
-    """
-
-    team_prompt_4 = "What is the maximum price we should pay @CashJordan for the next video to keep expected CPM under $30? For estimation, use the latest 10 videos."
-
-    team_prompt_5 = "Show me which brands worked with @CashJordan over the last month."
-
-    team_prompt_6 = "Generate a detailed report on @CashJordan for my team."
-
-    team_prompt_7 = "Give me a deep analysis of the latest video from Geekyranjit."
-
-    # Individual agent tests (commented out)
-    # channel_resolver.print_response(channel_resolver_prompt, stream=True)
-    # channel_collector.print_response(channel_collector_prompt, stream=True)
-    # video_collector.print_response(video_collector_prompt, stream=True)
-    # channel_searcher.print_response(channel_searcher_prompt, stream=True)
-    # risk_analyzer.print_response(risk_analyzer_prompt, stream=True)
-    # python_coder.print_response(python_coder_prompt, stream=True)
-    # sentiment_analyzer.print_response(sentiment_analyzer_prompt, stream=True)
-    # video_statistics_specialist.print_response(video_stats_prompt, stream=True)
-    # video_content_analyzer.print_response(video_content_prompt, stream=True)
-
-    # Team analysis test
-    # youtube_team.print_response(team_prompt_1, stream=True)
-    # youtube_team.print_response(team_prompt_2, stream=True)
-    youtube_team.print_response(team_prompt_7, stream=True)
+    )

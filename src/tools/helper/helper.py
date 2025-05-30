@@ -415,19 +415,44 @@ def _introspect_channel(identifier: str, max_videos: int = 10) -> Dict:
     
 def _search_youtube_channels(query: str, max_results: int = 5, min_subscribers: int = 1000) -> List[Dict]:
     try:
-        # First, search for channels
+        # Calculate date for one month ago
+        from datetime import datetime, timedelta
+        one_month_ago = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        # First, search for videos from the last month
         request = youtube_api.youtube.search().list(
             part="snippet",
             q=query,
-            type="channel",
-            maxResults=50,  # Get more results initially to filter by subscribers
-            order="relevance"
+            type="video",
+            maxResults=50,  # Get more results initially to filter
+            order="viewCount",  # Sort by view count
+            publishedAfter=one_month_ago
         )
         response = request.execute()
         
-        channels = []
+        # Track unique channels and their best performing video
+        channel_videos = {}  # channel_id -> (video_views, video_data)
+        
         for item in response.get('items', []):
-            channel_id = item['id']['channelId']
+            video_id = item['id']['videoId']
+            channel_id = item['snippet']['channelId']
+            
+            # Skip if we already have this channel
+            if channel_id in channel_videos:
+                continue
+                
+            # Get video statistics
+            video_request = youtube_api.youtube.videos().list(
+                part="statistics",
+                id=video_id
+            )
+            video_response = video_request.execute()
+            
+            if not video_response.get('items'):
+                continue
+                
+            video_data = video_response['items'][0]
+            view_count = int(video_data['statistics'].get('viewCount', 0))
             
             # Get channel statistics
             channel_request = youtube_api.youtube.channels().list(
@@ -444,19 +469,21 @@ def _search_youtube_channels(query: str, max_results: int = 5, min_subscribers: 
             
             # Only include channels that meet the subscriber threshold
             if subscriber_count >= min_subscribers:
-                channels.append({
+                channel_videos[channel_id] = (view_count, {
                     "channelId": channel_id,
-                    "title": item['snippet']['title'],
-                    "description": item['snippet']['description'],
-                    "thumbnails": item['snippet']['thumbnails'],
+                    "title": channel_data['snippet']['title'],
+                    "description": channel_data['snippet']['description'],
+                    "thumbnails": channel_data['snippet']['thumbnails'],
                     "subscriberCount": subscriber_count,
                     "viewCount": int(channel_data['statistics'].get('viewCount', 0)),
                     "videoCount": int(channel_data['statistics'].get('videoCount', 0)),
                     "customUrl": channel_data['snippet'].get('customUrl', ''),
-                    "publishedAt": channel_data['snippet'].get('publishedAt', '')
+                    "publishedAt": channel_data['snippet'].get('publishedAt', ''),
+                    "bestVideoViews": view_count  # Add the view count of their best video
                 })
         
-        # Sort channels by subscriber count in descending order
+        # Convert to list and sort by best video views
+        channels = [data for _, data in channel_videos.values()]
         channels.sort(key=lambda x: x['subscriberCount'], reverse=True)
         
         # Return only the requested number of results
