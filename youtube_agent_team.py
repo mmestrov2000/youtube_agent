@@ -13,15 +13,11 @@ from src.tools.youtube_api import (
     search_youtube_channels
 )
 from src.tools.video_analysis import video_to_text, analyze_video_content
-from agno.tools.reasoning import ReasoningTools
 from agno.tools.python import PythonTools
 from pathlib import Path
 from agno.tools.tavily import TavilyTools
 
 from src.tools.risk import sentiment_score
-
-from src.tools.analysis import predict_next_video_views
-
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -113,15 +109,9 @@ channel_searcher = Agent(
         "1. Use the search_youtube_channels tool to find relevant channels based on queries",
         "2. Present YouTube search results in a clear, organized manner",
         "3. Focus on finding the most relevant channels for given topics",
-        "For web-based channel discovery:",
-        "1. Use TavilyTools to search the web for relevant YouTube channels",
-        "2. Look for articles, lists, and recommendations about YouTube channels",
-        "3. Cross-reference web findings with YouTube search results",
-        "4. Verify channel existence and relevance",
-        "Combine both sources to provide:",
+        "Provide:",
         "1. A comprehensive list of relevant channels",
         "2. Context about why each channel is relevant",
-        "3. Additional insights from web sources about the channels",
         "4. Clear organization of results by source and relevance",
         "For query for the tool search_youtube_channels, always use the short term that a person would realistically search on youtube to find relevant video on this topic. For example, if the topic is 'AI sales automation', then the query should be 'AI sales automation'."
     ],
@@ -260,8 +250,10 @@ youtube_team = Team(
         "Make sure to give tasks to the agents in their scope in a way that they can understand and execute it.",
         "Maintain context between different analysis steps. Use strictly the tool set_shared_context after each agent to set the context for the next agent.",
         "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent.",
+        "Consider the chat history provided in the memory context when responding to maintain conversation continuity.",
     ],
     expected_output="Present all data in a clear, organized format using markdown.",
     show_members_responses=True,
     enable_agentic_context=True,
-    )
+    add_context=True  # Enable context addition for memory
+)
