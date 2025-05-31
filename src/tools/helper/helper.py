@@ -24,6 +24,8 @@ import tempfile
 from agno.tools import tool
 from typing import Annotated
 
+from firecrawl import FirecrawlApp, ScrapeOptions
+
 # ─── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -831,3 +833,93 @@ def predict_next_video_views(
     assuming a log‑normal model.
     """
     return _predict_next_video_views(historical_views, confidence_level, interval_type)
+
+def _crawl_talent_agency(agency_url: str, limit: int = 20) -> Dict:
+    """
+    Crawl a talent agency website to extract information about their talents/influencers.
+    
+    Args:
+        agency_url (str): The URL of the talent agency website
+        limit (int): Maximum number of pages to crawl (default: 50)
+        
+    Returns:
+        Dict: A dictionary containing:
+            - agency_name: Name of the talent agency
+            - talents: List of talent information including:
+                - name: Talent's name
+                - social_links: Dictionary of social media links
+                - bio: Short biography
+                - categories: List of talent categories
+                - stats: Dictionary of social media statistics
+    """
+    try:
+        
+        # Initialize Firecrawl
+        app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
+        
+        # Configure scraping options
+        scrape_options = ScrapeOptions(
+            formats=['markdown', 'html'],
+            onlyMainContent=True,
+            excludeTags=['script', 'style', 'nav', 'footer', 'header']
+        )
+        
+        # Crawl the website
+        crawl_result = app.crawl_url(
+            agency_url,
+            limit=limit,
+            scrape_options=scrape_options
+        )
+        
+        # Create an agent to parse the crawled content
+        parser_agent = Agent(
+            name="Talent Parser",
+            role="Parse talent agency website content to extract talent information",
+            model=OpenAIChat(id="gpt-4.1-mini"),
+            instructions=[
+                "Extract the following information from the website content:",
+                "1. Agency name",
+                "2. Agency contact information (email, phone, address)",
+                "3. List of talents with:",
+                "   - Name",
+                "   - Social media links (YouTube, Instagram, etc.)",
+                "   - Brief bio (1-2 sentences)",
+                "Return the data in this JSON format:",
+                "{",
+                "  'agency_name': 'string',",
+                "  'agency_contact': {",
+                "    'email': 'string',",
+                "    'phone': 'string',",
+                "    'address': 'string'",
+                "  },",
+                "  'talents': [",
+                "    {",
+                "      'name': 'string',",
+                "      'social_links': {",
+                "        'youtube': 'string',",
+                "        'instagram': 'string',",
+                "        'other': 'string'",
+                "      },",
+                "      'bio': 'string'",
+                "    }",
+                "  ]",
+                "}"
+            ]
+        )
+        
+        # Parse the crawled content
+        parsed_content = parser_agent.run(f"Website content: {crawl_result}")
+        
+        try:
+            # Convert string response to dictionary
+            talent_data = eval(parsed_content.content)
+            return talent_data
+        except:
+            # Fallback in case of parsing error
+            return {
+                "error": "Failed to parse talent information",
+                "raw_content": crawl_result
+            }
+            
+    except Exception as e:
+        raise Exception(f"Error crawling talent agency: {str(e)}")
