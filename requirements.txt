@@ -1,5 +1,6 @@
 agno==1.4.2
 boto3==1.38.10
+fastapi==0.115.12
 firecrawl-py==2.5.3
 fpdf==1.7.2
 google-api-python-client==2.168.0
@@ -19,4 +20,6 @@ tavily-python==0.7.2
 textblob==0.19.0
 torchvision==0.22.0
 transformers==4.51.3
+twilio==9.6.2
+uvicorn==0.34.2
 yt-dlp==2025.3.31

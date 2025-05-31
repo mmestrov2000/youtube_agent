@@ -13,9 +13,10 @@ from src.tools.youtube_api import (
     search_youtube_channels
 )
 from src.tools.video_analysis import video_to_text, analyze_video_content
+from src.tools.talents import crawl_talent_agency
 from agno.tools.python import PythonTools
-from pathlib import Path
 from agno.tools.tavily import TavilyTools
+from pathlib import Path
 
 from src.tools.risk import sentiment_score
 
@@ -224,6 +225,45 @@ video_statistics_specialist = Agent(
     markdown=True
 )
 
+# Agent 9: Talent Specialist
+talent_specialist = Agent(
+    name="talent_specialist",
+    role="Discovers and analyzes talents from talent agency websites",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[TavilyTools(), crawl_talent_agency],
+    instructions=[
+        "You are a talent specialist responsible for discovering and analyzing talents from talent agency websites.",
+        "Your workflow should be:",
+        "1. Use Tavily search to find relevant talent agency websites based on the search criteria",
+        "2. For each found agency website, use crawl_talent_agency to extract talent information",
+        "3. Present the findings in a clear, organized format",
+        "When searching for agencies:",
+        "- Use specific search terms like 'influencer talent agency [location/niche]'",
+        "- Focus on finding official agency websites",
+        "- Look for agencies that match the given criteria",
+        "When analyzing talents:",
+        "- Extract basic information (name, social links, bio)",
+        "- Note their main categories/niches",
+        "- Include any available statistics"
+    ],
+    expected_output="""Present your findings in a clear markdown format with:
+        1. Found Agencies
+           - List of relevant talent agencies with their websites
+           - Brief description of each agency's focus
+        2. Talent Analysis
+           - For each agency, list their talents with:
+             * Name and social links
+             * Brief bio
+             * Main categories
+             * Key statistics (if available)
+        3. Summary
+           - Total number of agencies and talents found
+           - Most common talent categories
+           - Notable talents worth highlighting""",
+    show_tool_calls=True,
+    markdown=True
+)
+
 # Create the YouTube analysis team
 youtube_team = Team(
     name="YouTube Analysis Team",
@@ -237,7 +277,8 @@ youtube_team = Team(
         risk_sentiment_analyzer,
         python_executor,
         metrics_calculator,
-        video_statistics_specialist
+        video_statistics_specialist,
+        talent_specialist
     ],
     show_tool_calls=True,
     markdown=True,
