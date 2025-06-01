@@ -1,92 +1,122 @@
 # Project Title
-**BrandView AI – YouTube Influencer Intelligence Agent**
+**BrandView AI – YouTube Influencer Intelligence Agent**
 
 ## Overview of the Idea
-BrandView AI is a smart agent built with **Agno** that helps brands evaluate YouTube creators for influencer marketing. It analyzes channels and videos to help marketers find safe, high-performing influencers, faster and more accurately than doing the manual research.
+BrandView AI is a smart agent built with **Agno** that helps brands evaluate YouTube creators for influencer marketing. It analyzes channels and videos to help marketers find safe, high-performing influencers, faster and more accurately than doing manual research.
 
 ## Project Goal
 To build an intelligent agent that allows brands to instantly:
-1. Understand a creator’s audience and past performance
-2. Assess risk and sentiment around their content
-3. Analyze how they handle sponsorships
-4. Forecast the performance of the next video
-5. Compare creators and optimize influencer choices
+1. Understand a creator’s audience and past performance  
+2. Assess risk and sentiment around their content  
+3. Analyze how they handle sponsorships  
+4. Estimate ROI and CPM based on past metrics  
+5. Discover and evaluate new talent by crawling talent agency websites  
 
 ## How It Works
-Marketers interact with BrandView AI using simple chat prompts. Behind the scenes, the agent (or a team of specialized sub-agents) fetches YouTube data, processes it using advanced tools (audio transcription, visual analysis, ML models, NLP), and delivers clear, actionable results.
+Marketers interact with BrandView AI using simple chat prompts. Behind the scenes, the system (a coordinated team of specialized sub-agents) fetches YouTube data, processes it using Python-based tools, and delivers clear, actionable results. For complex calculations, a dedicated Python coder agent writes and executes code on the fly.
 
-Each request can trigger a sophisticated workflow involving data gathering, AI-powered analysis, and tailored output generation—all hidden behind a smooth conversational experience.
+Each request can trigger a workflow involving:
+- Resolving channel identifiers  
+- Collecting channel and video data  
+- Transcribing video audio to text  
+- Analyzing video content for sponsor segments  
+- Conducting risk and sentiment analysis  
+- Running Python scripts for metric calculations  
+- Crawling influencer talent agency websites to discover new collaborators  
+
+All of this happens transparently within a single conversational interface.
 
 ### Example User Journeys:
 
-🧠 User: “What is the maximum price we should pay @GamerINF to keep CPM under $30?”<br>
-💬 Agent:
-- Fetches the influencer’s last 10–15 videos, calculates average and expected next views using ML prediction.
-- Calculates the highest price to achieve target CPM.
-- Response: <i>“Offer no more than $5,700 to maintain a CPM below $30, based on a projected 190K views.”</i>
+🧠 User: “What is the maximum price we should pay @GamerINF to keep CPM under $30?”  
+💬 Agent:  
+- Resolves the channel ID for @GamerINF and fetches their last 10 videos.  
+- Runs a Python script to calculate average views and determine the highest price for a target CPM.  
+- Response: _“Offer no more than $5,700 to maintain a CPM below $30, based on average views of 190K.”_
 
-🧠 User: “Show me which brands worked with @BeautyGuru over the last year.”<br>
-💬 Agent:
-- Analyzes video titles, descriptions, and transcripts using sponsorship-related keyword searches.
-- Extracts and lists brand names + shows brief context of integrations.
-- Response: <i>“Detected partnerships with L'Oréal, Sephora, and Glossier in 7 videos.”</i>
+🧠 User: “Show me which brands worked with @BeautyGuru over the last year.”  
+💬 Agent:  
+- Collects video metadata and comments for @BeautyGuru’s channel.  
+- Searches for sponsorship-related keywords in titles, descriptions, transcripts, and visual cues.  
+- Response: _“Detected partnerships with L'Oréal, Sephora, and Glossier in 7 videos.”_
 
-🧠 User: “Generate a detailed report on @UltraPlayer for my team.”<br>
-💬 Agent:
-- Collects profile data (subs, views, growth trends).
-- Analyzes content type, audience sentiment, collaboration history, risk level (politics, scandals).
-- Creates a full PDF report with visual charts and KPIs.
-- Response: <i>"Here’s your downloadable report, including forecasted ROI estimates and brand safety scores."</i>
+🧠 User: “Discover new influencers in the gaming niche.”  
+💬 Agent:  
+- Uses Firecrawl to crawl known influencer agency websites.  
+- Extracts talent information (name, social links, niche categories, basic stats).  
+- Response:  
+  1. **Found Agencies**: List of relevant gaming talent agencies and their websites.  
+  2. **Talent Analysis**: For each agency, extracted talent names, niches, and social profiles.  
+  3. **Summary**: _“Found 5 agencies and 27 gaming influencers, with top niches: “Let’s Plays,” “Speedruns,” and “Game Reviews.””_
 
-🧠 User: “Give me a deep analysis of the latest video from @TechNinja.”<br>
-💬 Agent:
-- Converts video audio to text (transcript).
-- Detects brand mentions and timestamps sponsorship sections.
-- Scores thumbnail attractiveness and analyzes engagement around the sponsor message.
-- Response: <i>"Sponsor segment starts at 4:35, high viewer retention observed, thumbnail scored 8.4/10."</i>
+## How It All Happens Behind the Scenes
 
-### How It All Happens Behind the Scenes:
-- Calls to YouTube API, transcript generation (ASR), thumbnail vision models, keyword analysis, ML forecasting, and report generation are orchestrated seamlessly.
-- Different specialized sub-agents may work in parallel (e.g., transcript agent, sentiment agent, forecasting agent).
-- The user experiences it all through one simple chat window — no technical skills needed.
+- Individual specialized sub-agents (e.g., Channel ID Resolver, Channel Data Collector, Video Analysis Specialist, Risk & Sentiment Analyzer, Python Script Executor, Metrics Calculator, Video Statistics Specialist, Talent Specialist) coordinate under a central team orchestration to handle each task in parallel when needed.
+- The Python coder agent (Python Script Executor) writes and runs code for any metric calculations or report generation.
+- Firecrawl is used strictly to crawl influencer management agency websites for talent discovery—not for scraping scandal or controversy content.
+- Video audio is transcribed on demand (audio→text) for deeper analysis of transcripts.
+- Video content analysis (scene parsing and sponsor detection) is performed via the `analyze_video_content` tool.
+- Risk and sentiment insights are drawn from comments and online searches using the `sentiment_score` tool and web search tools.  
 
-### Core Functionality
-- **Channel Health Snapshot** (growth, engagement, sentiment)
-- **Brand‑Safety Risk Scan** (flag profanity, politics, scandals)
-- **Sponsor Segment Locator** (timestamps + retention drop‑off)
-- **90 % Confidence View Forecast** for next upload
-- **ROI & CPM Estimator** (“What CPM do we hit if we pay $25K?”)
-- **Competitive Benchmarking** (“Compare @TechGamer vs @UltraPlay”)
+### Agents in the Codebase
+- **Channel ID Resolver**: Resolves various YouTube channel identifiers to official channel IDs.  
+- **Channel Data Collector**: Gathers channel information, recent videos, and overall channel statistics.  
+- **Video Analysis Specialist**: Retrieves video metadata, fetches comments, transcribes audio, and finds sponsor segments.  
+- **Channel Search Specialist**: Discovers YouTube channels based on search queries.  
+- **Risk & Sentiment Analyzer**: Evaluates brand-safety risks and sentiment from comments and online sources.  
+- **Python Script Executor**: Generates and executes Python scripts for any requested calculations, graphs, or reports.  
+- **Metrics Calculator**: Calculates influencer marketing metrics (CPM, CPV, CPA, engagement rate) using provided data.  
+- **Video Statistics Specialist**: Analyzes engagement statistics (views, likes, comments) for recent videos.  
+- **Talent Specialist**: Crawls influencer talent agency websites to extract talent profiles for collaborations.  
 
-### Multimodal Elements
-- **Text**: chat, transcripts, explanations  
-- **Audio→Text**: ASR on video audio  
-- **Image**: thumbnail scoring, brand‑logo detection  
-- **Video**: sponsor‑segment timestamping  
+## Core Functionality
+- **Channel Health Snapshot**  
+  - Growth and engagement metrics (views, subscribers)  
+  - Aggregate sentiment from recent comments  
+- **Brand-Safety & Sentiment Analysis**  
+  - Risk scan (flag profanity, controversial topics)  
+  - Aggregate sentiment scoring for videos and comments  
+- **Sponsor Segment Locator**  
+  - Identify sponsor mentions and timestamps in videos  
+  - Highlight retention drop-off around sponsored segments  
+- **ROI & CPM Estimator**  
+  - Calculate CPM, CPV, and CPA based on historical data using Python scripts  
+  - Answer “What CPM do we hit if we pay $X?”  
+- **Competitive Benchmarking**  
+  - Compare two or more channels on views, engagement, and brand-safety metrics  
+- **Talent Discovery & Analysis**  
+  - Crawl influencer agency websites to find new talent  
+  - Extract basic info: name, social links, niche, and any available stats  
+
+## Multimodal Elements
+- **Text**: Chat interface, transcripts, and analysis summaries  
+- **Audio→Text**: Transcription of video audio when requested  
+- **Video Analysis**: Scene parsing and sponsor detection via `analyze_video_content`  
 
 ## Tools Used
-| **Purpose**              | **Tool / Library**                                                                 |
-|---------------------------|------------------------------------------------------------------------------------|
-| Agent Orchestration       | <img src="https://cdn.prod.website-files.com/6796d350b8c706e4533e7e32/6796d350b8c706e4533e8019_Favicon%20small.png" height="16" style="vertical-align:middle;"> **Agno** |
-| Backend & API             | **Python**, **FastAPI**                                                            |
-| Chat LLM                  | **OpenAI GPT-4o**                                                                  |
-| Data Ingestion            | **YouTube Data API**, `yt-dlp`, <img src="https://firecrawl.dev/favicon.ico" height="16" style="vertical-align:middle;"> **Firecrawl** (web scraping for scandals and controversies) |
-| Audio to Text             | **OpenAI Whisper (medium)**                                                        |
-| Video Analysis            | **Video-LLaMA** (scene parsing, sponsor detection, visual understanding)           |
-| Sentiment Analysis        | `textblob`                                                                         |
-| Vision & Thumbnails       | **CLIP embeddings**, **OpenCV**                                                    |
-| ML Forecasting            | **PyTorch** custom models with bootstrapped prediction intervals                   |
-| Report Generation         | `jinja2` (HTML to PDF export)                                                      |
-| Frontend (Demo)           | **Streamlit**                                                                      |
-| Memory Layer              | <img src="https://mem0.ai/favicon.ico" height="16" style="vertical-align:middle;"> **Mem0** (store influencer profiles and risk assessments for faster, enriched follow-ups) |
-| Knowledge Ingestion       | <img src="https://framerusercontent.com/images/KCOWBYLKunDff1Dr452y6EfjiU.png" height="16" style="vertical-align:middle;"> **Graphlit MCP Server** (ingest external documents like press releases and brand guidelines) |
+| **Purpose**                  | **Tool / Library**                                                                                           |
+|------------------------------|---------------------------------------------------------------------------------------------------------------|
+| Agent Orchestration          | <img src="https://cdn.prod.website-files.com/6796d350b8c706e4533e7e32/6796d350b8c706e4533e8019_Favicon%20small.png" height="16" style="vertical-align:middle;"> **Agno** |
+| Backend & API                | **Python**, **FastAPI**                                                                                       |
+| Chat LLM                     | **OpenAI GPT-4.1-mini**                                                                                       |
+| Data Ingestion               | **YouTube Data API**, **yt-dlp**, <img src="https://firecrawl.dev/favicon.ico" height="16" style="vertical-align:middle;"> **Firecrawl** (crawl talent agency websites) |
+| Audio to Text                | **video_to_text**                                                                                             |
+| Video Analysis               | **analyze_video_content**                                                                                     |
+| Sentiment Analysis           | **sentiment_score**                                                                                           |
+| Python Execution & Reporting | **PythonTools** (via Python Script Executor agent)                                                             |
+| Frontend (Demo)              | **Streamlit**                                                                                                 |
+| Memory Layer                 | <img src="https://mem0.ai/favicon.ico" height="16" style="vertical-align:middle;"> **Mem0** (store short-term chat session memory) |
 
 ## UI Approach
-- **Primary Interface**: Streamlit web app where marketers can chat naturally with BrandView AI to request influencer analysis, forecasts, reports, and recommendations.  
-- **Secondary Output**: Auto-generated downloadable PDF/slide deck reports summarizing influencer profiles, health metrics, sponsorship history, risk scores, and forecasts.
+- **Primary Interface**: Streamlit web app where users can start multiple chat sessions to interact with BrandView AI.  
+- **Secondary Interface**: WhatsApp integration for on-the-go influencer queries via the Twilio webhook.
 
 ## Visuals
-*(To be added)*
+![Workflow Chart](images/workflow_chart.png)  
+![Agent Structure](images/agent_structure.png)  
+
+## Demo Video Link
+[Watch the Demo](videos/demo.mp4)
 
 ## Team Information
 - **Team Lead**: @mmestrov2000
@@ -101,15 +131,9 @@ Each request can trigger a sophisticated workflow involving data gathering, AI-p
 - [ ] Best use of Browser Use
 - [ ] Best Overall Project
 
-## Demo Video Link
-*(To be added – 2‑3 min demo)*
-
 ## Additional Notes
-- **Agent Collaboration**: While BrandView AI presents itself as a single chat agent, it operates as a coordinated system of specialized sub-agents handling different tasks like video processing, data fetching, forecasting, and reporting.
-- **Confidence Intervals for Forecasts**: View prediction is not a simple point estimate — it uses bootstrapped simulations on top of a PyTorch model to generate robust 90% confidence intervals, offering brands realistic outcome ranges instead of misleading single predictions.
-- **Flexible API Handling**: The agent is designed to dynamically adjust between API retrieval (YouTube Data API) and local scraping (yt-dlp) if necessary to maximize data access and minimize missing information.
-- **Sponsorship Detection**: Brand collaborations are detected both through metadata (titles, descriptions) and deep content analysis (transcripts, visual sponsor cue detection using Video-LLaMA).
-- **Risk Scoring Model**: Risk assessments blend NLP-based keyword spotting (profanity, politics, controversy) with sentiment analysis from recent comment sections to produce a reliable "Brand Safety Score" for each influencer.
-- **Scalable Architecture**: Though the MVP focuses on YouTube, the agent's modular architecture allows easy extension to other platforms like TikTok, Twitch, and Instagram in the future.
-- **Streamlit Interface Focus**: For the hackathon demo, Streamlit will be used for simplicity, but the backend is designed to easily plug into more advanced UIs or enterprise integrations if scaled post-hackathon.
-- **Future Enhancements**: Planned future improvements include sponsor integration style classification (casual mention vs. dedicated segment) and dynamic audience overlap analysis between multiple influencers.
+- **Agent Collaboration**: Although BrandView AI appears as a single chat agent, it is powered by a coordinated team of specialized sub-agents, each with its own focus (data collection, analysis, Python scripting, talent discovery).  
+- **Python-Driven Calculations**: Any complex metric calculation or report generation is handled by the Python Script Executor agent, ensuring accuracy and reproducibility.  
+- **Firecrawl Usage**: Firecrawl is used exclusively to crawl official influencer agency websites for talent information—not for controversy scraping.  
+- **Streamlit & WhatsApp Integration**: The Streamlit interface serves as the primary demo platform, while the WhatsApp integration allows users to query the agent from their mobile devices.  
+- **Extensibility**: The modular architecture makes it straightforward to add new platforms (e.g., TikTok, Twitch) or additional analysis tools in the future.
