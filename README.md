@@ -28,26 +28,28 @@ All of this happens transparently within a single conversational interface.
 
 ### Example User Journeys:
 
-🧠 User: "What is the maximum price we should pay @GamerINF to keep CPM under $30?"  
+🧠 User: "Find the top 5 German influencers that are managed by the agency co-mng.de. Make sure they have a YouTube channel."  
 💬 Agent:  
-- Resolves the channel ID for @GamerINF and fetches their last 10 videos.  
-- Runs a Python script to calculate average views and determine the highest price for a target CPM.  
-- Response: "_"Offer no more than $5,700 to maintain a CPM below $30, based on average views of 190K."_
+- Uses the Talent Specialist agent to crawl co-mng.de website and extract talent information
+- Filters for German influencers with YouTube channels
+- Ranks them based on their YouTube metrics using the Channel Data Collector
+- Response: "_Found 5 German influencers managed by co-mng.de. Here are their channels ranked by subscriber count and engagement metrics..._"
 
-🧠 User: "Show me which brands worked with @BeautyGuru over the last year."  
+🧠 User: "What would be the price that I should pay CashJordan to keep the CPM under 35€? Fetch the views for the last 20 videos and use the median for the estimation."  
 💬 Agent:  
-- Collects video metadata and comments for @BeautyGuru's channel.  
-- Searches for sponsorship-related keywords in titles, descriptions, transcripts, and visual cues.  
-- Response: "_Detected partnerships with L'Oréal, Sephora, and Glossier in 7 videos."_
+- Channel ID Resolver finds CashJordan's official channel ID
+- Video Statistics Specialist fetches the last 20 videos' statistics
+- Python Script Executor calculates the median views
+- Metrics Calculator determines the maximum price to maintain CPM under 35€
+- Response: "_Based on the median views of 450K from the last 20 videos, you should pay no more than €15,750 to maintain a CPM under 35€._"
 
-🧠 User: "Discover new influencers in the gaming niche."  
+🧠 User: "Find 3 biggest YouTube influencers in India focused on tech content. Present the channels in the table with columns: Channel name and URL, Followers, Average Views, Average Likes, Average comments. Leave a link to the report document."  
 💬 Agent:  
-- Uses Firecrawl to crawl known influencer agency websites.  
-- Extracts talent information (name, social links, niche categories, basic stats).  
-- Response:  
-  1. **Found Agencies**: List of relevant gaming talent agencies and their websites.  
-  2. **Talent Analysis**: For each agency, extracted talent names, niches, and social profiles.  
-  3. **Summary**: "_Found 5 agencies and 27 gaming influencers, with top niches: "Let's Plays," "Speedruns," and "Game Reviews.""_
+- Channel Search Specialist searches for Indian tech YouTube channels
+- Channel Data Collector gathers detailed metrics for each channel
+- Python Script Executor calculates averages for views, likes, and comments
+- Document Generator creates a formatted report with the table
+- Response: "_Here are the top 3 Indian tech influencers with their metrics. View the detailed report here: [Report Link]_"
 
 ## How It All Happens Behind the Scenes
 
@@ -101,7 +103,7 @@ All of this happens transparently within a single conversational interface.
 | Backend & API                | **Python**, **FastAPI**                                                                                       |
 | Chat LLM                     | **OpenAI GPT-4.1-mini**                                                                                       |
 | Data Ingestion               | **YouTube Data API**, **yt-dlp**, <img src="https://firecrawl.dev/favicon.ico" height="16" style="vertical-align:middle;"> **Firecrawl** (crawl talent agency websites) |
-| Audio to Text                | **video_to_text**                                                                                             |
+| Audio to Text                | **video_to_text (OpenAI Whisper)**                                                                                             |
 | Video Analysis               | **analyze_video_content**                                                                                     |
 | Sentiment Analysis           | **sentiment_score**                                                                                           |
 | Python Execution & Reporting | **PythonTools** (via Python Script Executor agent)                                                             |
@@ -114,10 +116,10 @@ All of this happens transparently within a single conversational interface.
 
 ## Visuals
 
-- 👉 [Download all Visuals (ZIP)](images/visuals.zip)
+- 👉 [Download all Visuals (ZIP) including Agent Architecture and Workflow Chart](images/visuals.zip)
 
 ## Demo Video Link
-[Watch the Demo](videos/demo.mp4)
+[Watch the Demo](https://www.loom.com/share/5510b1e2420a4f839ca107a3899350ec?sid=660cdbee-e59b-46b5-9e83-91c84ddc98b7)
 
 ## How to Use the App
 
@@ -133,6 +135,8 @@ Follow these steps to get BrandView AI up and running locally:
 2. **Install dependencies**  
    Ensure you have Python 3.8+ and pip installed, then run:
    ```bash
+   python3 -m venv venv
+   source venv/bin/activate
    pip install -r requirements.txt
    ```
 
