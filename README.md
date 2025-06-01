@@ -126,7 +126,7 @@ Follow these steps to get BrandView AI up and running locally:
 1. **Clone the GitHub repository**  
    Open a terminal and run:
    ```bash
-   git clone https://github.com/yourusername/BrandView-AI.git
+   git clone https://github.com/mmestrov2000/BrandView-AI.git
    cd BrandView-AI
    ```
 
