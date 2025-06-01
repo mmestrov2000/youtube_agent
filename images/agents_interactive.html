@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Analysis Team - Interactive Org Chart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        .container {
+            padding: 20px;
+            min-width: 1200px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 15px;
+            border: 2px solid #FFD700;
+        }
+
+        .header h1 {
+            color: #FFD700;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .org-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .supervisor {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border: 4px solid #FFD700;
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .supervisor::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+            animation: rotate 3s linear infinite;
+            z-index: 0;
+        }
+
+        .supervisor > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .supervisor:hover {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.5);
+        }
+
+        .layers {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .layer {
+            background: rgba(15, 15, 15, 0.8);
+            border: 2px dashed #666666;
+            border-radius: 15px;
+            padding: 20px;
+            min-width: 280px;
+            backdrop-filter: blur(10px);
+        }
+
+        .layer-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .data-collection .layer-title {
+            background: linear-gradient(135deg, #2d4a22, #4a7c59);
+            color: #90EE90;
+        }
+
+        .content-analysis .layer-title {
+            background: linear-gradient(135deg, #1e3a5f, #2980b9);
+            color: #87CEEB;
+        }
+
+        .intelligence .layer-title {
+            background: linear-gradient(135deg, #4a1e4a, #8e44ad);
+            color: #DDA0DD;
+        }
+
+        .execution .layer-title {
+            background: linear-gradient(135deg, #5a2d1a, #d68910);
+            color: #FFA500;
+        }
+
+        .specialist {
+            background: linear-gradient(135deg, rgba(42, 42, 42, 0.9), rgba(62, 62, 62, 0.9));
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .specialist::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .specialist:hover::before {
+            left: 100%;
+        }
+
+        .specialist:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .data-collection .specialist:hover { border-color: #90EE90; }
+        .content-analysis .specialist:hover { border-color: #87CEEB; }
+        .intelligence .specialist:hover { border-color: #DDA0DD; }
+        .execution .specialist:hover { border-color: #FFA500; }
+
+        .specialist-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .specialist-role {
+            color: #cccccc;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .specialist-tools {
+            color: #aaaaaa;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .connection-line {
+            stroke: #666666;
+            stroke-width: 2;
+            opacity: 0.5;
+            stroke-dasharray: 5,5;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -10; }
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border: 3px solid #FFD700;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .info-panel h3 {
+            color: #FFD700;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .info-panel .close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            color: #FFD700;
+            font-size: 24px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .flow-arrows {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .arrow {
+            color: #FFD700;
+            font-size: 2em;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .metrics-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 26, 26, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.9em;
+            min-width: 200px;
+        }
+
+        .metrics-display h4 {
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .layers {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .container {
+                min-width: auto;
+                padding: 10px;
+            }
+            
+            .metrics-display {
+                position: relative;
+                margin: 20px auto;
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 YouTube Analysis Team</h1>
+            <p>Interactive Organizational Structure & Data Flow Visualization</p>
+        </div>
+
+        <div class="org-chart">
+            <!-- Supervisor -->
+            <div class="supervisor" onclick="showInfo('supervisor')">
+                <h2>🎬 YouTube Analysis Team Supervisor</h2>
+                <p>📋 Oversees entire team | 🔄 Synthesizes outputs</p>
+                <p><strong>🤖 OpenAI GPT-4.1-mini</strong></p>
+            </div>
+
+            <div class="flow-arrows">
+                <span class="arrow">⬇️</span>
+            </div>
+
+            <!-- Layers -->
+            <div class="layers">
+                <!-- Data Collection Layer -->
+                <div class="layer data-collection">
+                    <div class="layer-title">🔍 Data Collection Layer</div>
+                    
+                    <div class="specialist" onclick="showInfo('channel-resolver')">
+                        <div class="specialist-title">🔗 Channel Resolver</div>
+                        <div class="specialist-role">🎯 ID Resolution</div>
+                        <div class="specialist-tools">📝 resolve_channel_id | 💡 Handle @usernames, URLs, IDs</div>
+                    </div>
+
+                    <div class="specialist" onclick="showInfo('channel-collector')">
+                        <div class="specialist-title">📊 Channel Collector</div>
+                        <div class="specialist-role">🎯 Channel Data Gathering</div>
+                        <div class="specialist-tools">📝 fetch_channel_info | 💡 Complete channel overview</div>
+                    </div>
+
+                    <div class="specialist" onclick="showInfo('channel-searcher')">
+                        <div class="specialist-title">🔎 Channel Searcher</div>
+                        <div class="specialist-role">🎯 Channel Discovery</div>
+                        <div class="specialist-tools">📝 search_youtube_channels | 💡 Find relevant influencers</div>
+                    </div>
+
+                    <div class="specialist" onclick="showInfo('talent-specialist')">
+                        <div class="specialist-title">⭐ Talent Specialist</div>
+                        <div class="specialist-role">🎯 Talent Agency Discovery</div>
+                        <div class="specialist-tools">📝 TavilyTools, crawl_talent_agency | 💡 Discover agency talents</div>
+                    </div>
+                </div>
+
+                <!-- Content Analysis Layer -->
+                <div class="layer content-analysis">
+                    <div class="layer-title">🎬 Content Analysis Layer</div>
+                    
+                    <div class="specialist" onclick="showInfo('video-analysis')">
+                        <div class="specialist-title">🎥 Video Analysis Specialist</div>
+                        <div class="specialist-role">🎯 Deep Video Analysis</div>
+                        <div class="specialist-tools">📝 video_to_text, analyze_content | 💡 Sponsor detection, transcription</div>
+                    </div>
+
+                    <div class="specialist" onclick="showInfo('video-statistics')">
+                        <div class="specialist-title">📈 Video Statistics Specialist</div>
+                        <div class="specialist-role">🎯 Engagement Metrics</div>
+                        <div class="specialist-tools">📝 fetch_video_statistics | 💡 Performance analysis</div>
+                    </div>
+                </div>
+
+                <!-- Intelligence & Analysis Layer -->
+                <div class="layer intelligence">
+                    <div class="layer-title">🧠 Intelligence & Analysis Layer</div>
+                    
+                    <div class="specialist" onclick="showInfo('risk-sentiment')">
+                        <div class="specialist-title">🛡️ Risk & Sentiment Analyzer</div>
+                        <div class="specialist-role">🎯 Brand Safety Assessment</div>
+                        <div class="specialist-tools">📝 TavilyTools, sentiment_score | 💡 Controversy detection</div>
+                    </div>
+
+                    <div class="specialist" onclick="showInfo('metrics-calculator')">
+                        <div class="specialist-title">📊 Metrics Calculator</div>
+                        <div class="specialist-role">🎯 Marketing Metrics</div>
+                        <div class="specialist-tools">📝 PythonTools | 💡 CPM, CPV, engagement rates</div>
+                    </div>
+                </div>
+
+                <!-- Execution & Reporting Layer -->
+                <div class="layer execution">
+                    <div class="layer-title">⚙️ Execution & Reporting Layer</div>
+                    
+                    <div class="specialist" onclick="showInfo('python-executor')">
+                        <div class="specialist-title">🐍 Python Script Executor</div>
+                        <div class="specialist-role">🎯 Code Generation & Execution</div>
+                        <div class="specialist-tools">📝 PythonTools with matplotlib | 💡 Reports, graphs, analysis</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Display -->
+    <div class="metrics-display">
+        <h4>📊 Team Metrics</h4>
+        <div class="metric-item">
+            <span>Total Specialists:</span>
+            <span id="total-specialists">8</span>
+        </div>
+        <div class="metric-item">
+            <span>Active Layers:</span>
+            <span id="active-layers">4</span>
+        </div>
+        <div class="metric-item">
+            <span>Data Flow Steps:</span>
+            <span id="flow-steps">7</span>
+        </div>
+        <div class="metric-item">
+            <span>AI Model:</span>
+            <span>GPT-4.1-mini</span>
+        </div>
+    </div>
+
+    <!-- Info Panel -->
+    <div class="info-panel" id="info-panel">
+        <span class="close" onclick="closeInfo()">&times;</span>
+        <div id="info-content"></div>
+    </div>
+
+    <script>
+        const infoData = {
+            'supervisor': {
+                title: '🎬 YouTube Analysis Team Supervisor',
+                description: 'The central command hub that orchestrates the entire YouTube analysis workflow. This supervisor agent delegates tasks across all specialized layers and synthesizes the final comprehensive reports.',
+                responsibilities: [
+                    '📋 Oversee and coordinate all team activities',
+                    '🔄 Synthesize outputs from all layers',
+                    '🎯 Delegate tasks to appropriate specialists',
+                    '📊 Generate final comprehensive reports'
+                ],
+                model: 'OpenAI GPT-4.1-mini',
+                connections: 'Connects to all 4 operational layers'
+            },
+            'channel-resolver': {
+                title: '🔗 Channel Resolver',
+                description: 'Specialized in resolving various YouTube channel identifier formats into standardized channel IDs for consistent processing across the system.',
+                responsibilities: [
+                    '🎯 Convert @usernames to channel IDs',
+                    '🔗 Process YouTube URLs to extract IDs',
+                    '📝 Standardize channel identification',
+                    '✅ Validate channel existence'
+                ],
+                tools: ['resolve_channel_id'],
+                dataFlow: 'Feeds resolved IDs to Channel Collector'
+            },
+            'channel-collector': {
+                title: '📊 Channel Collector',
+                description: 'Comprehensive data gathering specialist that fetches complete channel information including metadata, statistics, and content overview.',
+                responsibilities: [
+                    '📊 Fetch complete channel metadata',
+                    '🎬 Gather video catalog information',
+                    '📈 Collect subscriber and view statistics',
+                    '🏷️ Extract channel categorization data'
+                ],
+                tools: ['fetch_channel_info'],
+                dataFlow: 'Receives from Channel Resolver, feeds to Analysis layers'
+            },
+            'channel-searcher': {
+                title: '🔎 Channel Searcher',
+                description: 'Discovery specialist focused on finding and identifying relevant YouTube channels based on search criteria and content themes.',
+                responsibilities: [
+                    '🔍 Search for channels by keywords',
+                    '🎯 Identify relevant influencers',
+                    '📊 Rank channels by relevance',
+                    '🏷️ Categorize discovered channels'
+                ],
+                tools: ['search_youtube_channels'],
+                dataFlow: 'Feeds discovered channels to Channel Collector'
+            },
+            'talent-specialist': {
+                title: '⭐ Talent Specialist',
+                description: 'Specialized in discovering and analyzing talent agency relationships, helping identify professionally managed creators and their representation.',
+                responsibilities: [
+                    '🏢 Discover talent agencies',
+                    '⭐ Identify agency-represented creators',
+                    '🔗 Map creator-agency relationships',
+                    '📊 Analyze professional creator networks'
+                ],
+                tools: ['TavilyTools', 'crawl_talent_agency'],
+                dataFlow: 'Feeds talent data to Channel Collector and Risk Analyzer'
+            },
+            'video-analysis': {
+                title: '🎥 Video Analysis Specialist',
+                description: 'Deep content analysis specialist that processes video content for transcription, sponsor detection, and comprehensive content understanding.',
+                responsibilities: [
+                    '📝 Generate video transcriptions',
+                    '🎯 Detect sponsored content',
+                    '🏷️ Analyze content themes',
+                    '📊 Extract content metrics'
+                ],
+                tools: ['video_to_text', 'analyze_content'],
+                dataFlow: 'Receives from Channel Collector, feeds to Risk Analyzer'
+            },
+            'video-statistics': {
+                title: '📈 Video Statistics Specialist',
+                description: 'Engagement and performance metrics specialist focused on quantitative analysis of video and channel performance data.',
+                responsibilities: [
+                    '📊 Collect engagement metrics',
+                    '📈 Analyze performance trends',
+                    '🎯 Calculate interaction rates',
+                    '📅 Track temporal patterns'
+                ],
+                tools: ['fetch_video_statistics'],
+                dataFlow: 'Receives from Channel Collector, feeds to Metrics Calculator'
+            },
+            'risk-sentiment': {
+                title: '🛡️ Risk & Sentiment Analyzer',
+                description: 'Brand safety and reputation specialist that assesses potential risks, controversies, and sentiment around creators and content.',
+                responsibilities: [
+                    '🛡️ Assess brand safety risks',
+                    '📊 Analyze sentiment scores',
+                    '⚠️ Detect controversy signals',
+                    '🔍 Monitor reputation factors'
+                ],
+                tools: ['TavilyTools', 'sentiment_score'],
+                dataFlow: 'Receives from Video Analysis and Talent Specialist, feeds to Metrics Calculator'
+            },
+            'metrics-calculator': {
+                title: '📊 Metrics Calculator',
+                description: 'Marketing and business metrics specialist that calculates key performance indicators and ROI metrics for influencer marketing decisions.',
+                responsibilities: [
+                    '💰 Calculate CPM and CPV rates',
+                    '📈 Compute engagement rates',
+                    '🎯 Analyze audience metrics',
+                    '📊 Generate ROI projections'
+                ],
+                tools: ['PythonTools'],
+                dataFlow: 'Receives from Statistics and Risk layers, feeds to Python Executor'
+            },
+            'python-executor': {
+                title: '🐍 Python Script Executor',
+                description: 'Code generation and execution specialist that creates comprehensive reports, visualizations, and automated analysis scripts.',
+                responsibilities: [
+                    '📊 Generate data visualizations',
+                    '📈 Create analytical reports',
+                    '🐍 Execute custom analysis scripts',
+                    '📋 Compile final deliverables'
+                ],
+                tools: ['PythonTools', 'matplotlib'],
+                dataFlow: 'Receives from all layers, generates final reports for Supervisor'
+            }
+        };
+
+        function showInfo(roleId) {
+            const info = infoData[roleId];
+            if (!info) return;
+
+            const content = `
+                <h3>${info.title}</h3>
+                <p style="margin-bottom: 15px; color: #cccccc;">${info.description}</p>
+                
+                <h4 style="color: #FFD700; margin-bottom: 10px;">🎯 Key Responsibilities:</h4>
+                <ul style="margin-bottom: 15px; padding-left: 20px;">
+                    ${info.responsibilities.map(resp => `<li style="margin-bottom: 5px;">${resp}</li>`).join('')}
+                </ul>
+                
+                ${info.tools ? `
+                    <h4 style="color: #FFD700; margin-bottom: 10px;">🛠️ Tools & Methods:</h4>
+                    <p style="margin-bottom: 15px; color: #90EE90;">${info.tools.join(', ')}</p>
+                ` : ''}
+                
+                ${info.model ? `
+                    <h4 style="color: #FFD700; margin-bottom: 10px;">🤖 AI Model:</h4>
+                    <p style="margin-bottom: 15px; color: #87CEEB;">${info.model}</p>
+                ` : ''}
+                
+                ${info.dataFlow ? `
+                    <h4 style="color: #FFD700; margin-bottom: 10px;">🔄 Data Flow:</h4>
+                    <p style="color: #DDA0DD;">${info.dataFlow}</p>
+                ` : ''}
+                
+                ${info.connections ? `
+                    <h4 style="color: #FFD700; margin-bottom: 10px;">🔗 Connections:</h4>
+                    <p style="color: #FFA500;">${info.connections}</p>
+                ` : ''}
+            `;
+
+            document.getElementById('info-content').innerHTML = content;
+            document.getElementById('info-panel').style.display = 'block';
+        }
+
+        function closeInfo() {
+            document.getElementById('info-panel').style.display = 'none';
+        }
+
+        // Close info panel when clicking outside
+        document.addEventListener('click', function(e) {
+            const panel = document.getElementById('info-panel');
+            if (e.target === panel) {
+                closeInfo();
+            }
+        });
+
+        // Add some interactive animations
+        document.addEventListener('DOMContentLoaded', function() {
+            const specialists = document.querySelectorAll('.specialist');
+            specialists.forEach((specialist, index) => {
+                specialist.style.animationDelay = `${index * 0.1}s`;
+                specialist.style.animation = 'fadeInUp 0.6s ease forwards';
+            });
+        });
+
+        // Add CSS for fadeInUp animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Update metrics dynamically
+        function updateMetrics() {
+            const specialists = document.querySelectorAll('.specialist').length;
+            const layers = document.querySelectorAll('.layer').length;
+            
+            document.getElementById('total-specialists').textContent = specialists;
+            document.getElementById('active-layers').textContent = layers;
+        }
+
+        updateMetrics();
+    </script>
+</body>
+</html>
