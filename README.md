@@ -6,7 +6,7 @@ BrandView AI is a smart agent built with **Agno** that helps brands evaluate You
 
 ## Project Goal
 To build an intelligent agent that allows brands to instantly:
-1. Understand a creator’s audience and past performance  
+1. Understand a creator's audience and past performance  
 2. Assess risk and sentiment around their content  
 3. Analyze how they handle sponsorships  
 4. Estimate ROI and CPM based on past metrics  
@@ -28,26 +28,26 @@ All of this happens transparently within a single conversational interface.
 
 ### Example User Journeys:
 
-🧠 User: “What is the maximum price we should pay @GamerINF to keep CPM under $30?”  
+🧠 User: "What is the maximum price we should pay @GamerINF to keep CPM under $30?"  
 💬 Agent:  
 - Resolves the channel ID for @GamerINF and fetches their last 10 videos.  
 - Runs a Python script to calculate average views and determine the highest price for a target CPM.  
-- Response: _“Offer no more than $5,700 to maintain a CPM below $30, based on average views of 190K.”_
+- Response: "_"Offer no more than $5,700 to maintain a CPM below $30, based on average views of 190K."_
 
-🧠 User: “Show me which brands worked with @BeautyGuru over the last year.”  
+🧠 User: "Show me which brands worked with @BeautyGuru over the last year."  
 💬 Agent:  
-- Collects video metadata and comments for @BeautyGuru’s channel.  
+- Collects video metadata and comments for @BeautyGuru's channel.  
 - Searches for sponsorship-related keywords in titles, descriptions, transcripts, and visual cues.  
-- Response: _“Detected partnerships with L'Oréal, Sephora, and Glossier in 7 videos.”_
+- Response: "_Detected partnerships with L'Oréal, Sephora, and Glossier in 7 videos."_
 
-🧠 User: “Discover new influencers in the gaming niche.”  
+🧠 User: "Discover new influencers in the gaming niche."  
 💬 Agent:  
 - Uses Firecrawl to crawl known influencer agency websites.  
 - Extracts talent information (name, social links, niche categories, basic stats).  
 - Response:  
   1. **Found Agencies**: List of relevant gaming talent agencies and their websites.  
   2. **Talent Analysis**: For each agency, extracted talent names, niches, and social profiles.  
-  3. **Summary**: _“Found 5 agencies and 27 gaming influencers, with top niches: “Let’s Plays,” “Speedruns,” and “Game Reviews.””_
+  3. **Summary**: "_Found 5 agencies and 27 gaming influencers, with top niches: "Let's Plays," "Speedruns," and "Game Reviews.""_
 
 ## How It All Happens Behind the Scenes
 
@@ -82,7 +82,7 @@ All of this happens transparently within a single conversational interface.
   - Highlight retention drop-off around sponsored segments  
 - **ROI & CPM Estimator**  
   - Calculate CPM, CPV, and CPA based on historical data using Python scripts  
-  - Answer “What CPM do we hit if we pay $X?”  
+  - Answer "What CPM do we hit if we pay $X?"  
 - **Competitive Benchmarking**  
   - Compare two or more channels on views, engagement, and brand-safety metrics  
 - **Talent Discovery & Analysis**  
@@ -118,6 +118,55 @@ All of this happens transparently within a single conversational interface.
 
 ## Demo Video Link
 [Watch the Demo](videos/demo.mp4)
+
+## How to Use the App
+
+Follow these steps to get BrandView AI up and running locally:
+
+1. **Clone the GitHub repository**  
+   Open a terminal and run:
+   ```bash
+   git clone https://github.com/yourusername/BrandView-AI.git
+   cd BrandView-AI
+   ```
+
+2. **Install dependencies**  
+   Ensure you have Python 3.8+ and pip installed, then run:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Obtain API keys**  
+   You will need to sign up for the following services and obtain their API keys:
+
+   - **YouTube API**: Get your API key from [Google Cloud Console](https://console.cloud.google.com/) (YouTube Data API v3)
+   - **OpenAI API**: Get your API key from [OpenAI Platform](https://platform.openai.com/docs/overview)
+   - **FireCrawl API**: Sign up at [FireCrawl](https://www.firecrawl.dev/app)
+   - **AWS S3**: Create an account on [AWS](https://aws.amazon.com/) and follow the [S3 Getting Started Guide](https://docs.aws.amazon.com/AmazonS3/latest/userguide/GetStartedWithS3.html)
+   - **Tavily API**: Get your API key from [Tavily](https://www.tavily.com/)
+   - **Mem0 API**: Get your API key from [Mem0 Dashboard](https://app.mem0.ai/dashboard/)
+
+4. **Configure Environment Variables**
+   Create a `.env` file in the project's root directory with the following variables:
+   ```
+   YOUTUBE_API_KEY=<your_youtube_api_key>
+   OPENAI_API_KEY=<your_openai_api_key>
+   FIRECRAWL_API_KEY=<your_firecrawl_api_key>
+   AWS_ACCESS_KEY_ID=<your_aws_access_key_id>
+   AWS_SECRET_ACCESS_KEY=<your_aws_secret_access_key>
+   S3_BUCKET_NAME=<your_s3_bucket_name>
+   AWS_REGION=<your_aws_region>
+   TAVILY_API_KEY=<your_tavily_api_key>
+   MEM0_API_KEY=<your_mem0_api_key>
+   ```
+   Replace each `<...>` placeholder with the actual key/value you obtained in step 3.
+
+5. **Run the Streamlit app**  
+   From the project root, execute:
+   ```bash
+   streamlit run app.py
+   ```
+   This will launch the local web UI. Open the URL shown in your terminal (typically `http://localhost:8501`) in your browser to start interacting with BrandView AI.
 
 ## Team Information
 - **Team Lead**: @mmestrov2000
