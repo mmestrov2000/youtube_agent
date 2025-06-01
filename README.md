@@ -113,7 +113,7 @@ All of this happens transparently within a single conversational interface.
 
 ## Visuals
 ![Workflow Chart](images/workflow_chart.png)  
-![Agent Structure](images/agent_structure.png)  
+![Agent Structure](images/agent_architecture.png)  
 
 ## Demo Video Link
 [Watch the Demo](videos/demo.mp4)
