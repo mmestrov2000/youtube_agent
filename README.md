@@ -113,21 +113,7 @@ All of this happens transparently within a single conversational interface.
 
 ## Visuals
 
-### Workflow Chart
-![Workflow Chart](images/workflow_chart.png)
-
-### Agent Structure
-![Agent Structure](images/agent_architecture.png)
-
-### Interactive Sub-Agents Explorer
-👉 [Explore Sub-Agents Interactive](images/agents_interactive.html) – an interactive HTML file where you can drill into each sub-agent in detail.
-
-
-
-
-
-
-
+- 👉 [Download all Visuals (ZIP)](images/visuals.zip)
 
 ## Demo Video Link
 [Watch the Demo](videos/demo.mp4)

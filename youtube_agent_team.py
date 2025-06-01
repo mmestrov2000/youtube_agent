@@ -12,6 +12,7 @@ from src.tools.youtube_api import (
     fetch_comments,
     search_youtube_channels
 )
+from src.tools.document_output import Document_Output
 from src.tools.video_analysis import video_to_text, analyze_video_content
 from src.tools.talents import crawl_talent_agency
 from agno.tools.python import PythonTools
@@ -172,24 +173,40 @@ risk_sentiment_analyzer = Agent(
     markdown=True
 )
 
-# Agent 6: Python Script Executor
-python_executor = Agent(
-    name="python_executor",
-    role="Generates, executes, and manages Python scripts, reports, and graphs.",
+# Agent 6: Document Generator
+document_generator = Agent(
+    name="document_generator",
+    role="Generates structured documents and reports from data.",
     model=OpenAIChat(id="gpt-4.1-mini"),
-    tools=[PythonTools(base_dir=Path("tmp/python"))],
+    tools=[Document_Output],
     instructions=[
-        "Use PythonTools to write and run Python scripts for any user request.",
-        "Generate reports and save graphs via matplotlib to files, not inline displays.",
-        "Use the predict_next_video_views tool for view predictions.",
-        "For metric calculations, request data from the Metrics Calculator agent.",
-        "Ensure scripts use real data outputs from the Metrics Calculator agent."
+        "1. Use Document_Output tool to create all reports and documents",
+        "2. Format content with clear sections and bullet points",
+        "3. Include any provided graphs or visualizations in the document",
+        "4. Return the document URL to the user",
+        "5. Never use Python scripts for document generation"
     ],
     show_tool_calls=True,
     markdown=True
 )
 
-# Agent 7: Metrics Calculator
+# Agent 7: Python Script Executor
+python_script_executor = Agent(
+    name="python_script_executor",
+    role="Executes Python scripts for calculations and data processing.",
+    model=OpenAIChat(id="gpt-4.1-mini"),
+    tools=[PythonTools(base_dir=Path("tmp/python"))],
+    instructions=[
+        "1. Use PythonTools to write and execute Python scripts for any calculations or data processing",
+        "2. Save any generated graphs to files using matplotlib",
+        "3. Use real data from Metrics Calculator agent for calculations",
+        "4. Never generate reports or documents - that's the Document Generator's job"
+    ],
+    show_tool_calls=True,
+    markdown=True
+)
+
+# Agent 8: Metrics Calculator
 metrics_calculator = Agent(
     name="metrics_calculator",
     role="Calculates influencer marketing metrics using real data provided.",
@@ -207,7 +224,7 @@ metrics_calculator = Agent(
     markdown=False
 )
 
-# Agent 8: Video Statistics Specialist
+# Agent 9: Video Statistics Specialist
 video_statistics_specialist = Agent(
     name="video_statistics_specialist",
     role="Analyzes engagement statistics for recent videos on a YouTube channel",
@@ -225,7 +242,7 @@ video_statistics_specialist = Agent(
     markdown=True
 )
 
-# Agent 9: Talent Specialist
+# Agent 10: Talent Specialist
 talent_specialist = Agent(
     name="talent_specialist",
     role="Discovers and analyzes talents from talent agency websites",
@@ -275,7 +292,8 @@ youtube_team = Team(
         video_analysis_specialist,
         channel_searcher,
         risk_sentiment_analyzer,
-        python_executor,
+        document_generator,
+        python_script_executor,
         metrics_calculator,
         video_statistics_specialist,
         talent_specialist
@@ -292,6 +310,7 @@ youtube_team = Team(
         "Maintain context between different analysis steps. Use strictly the tool set_shared_context after each agent to set the context for the next agent.",
         "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent.",
         "Consider the chat history provided in the memory context when responding to maintain conversation continuity.",
+        "To generate a report or document, use the document_generator agent.",
     ],
     expected_output="Present all data in a clear, organized format using markdown.",
     show_members_responses=True,
