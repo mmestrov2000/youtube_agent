@@ -193,14 +193,13 @@ document_generator = Agent(
 # Agent 7: Python Script Executor
 python_script_executor = Agent(
     name="python_script_executor",
-    role="Executes Python scripts for calculations and data processing.",
+    role="Executes Python scripts for calculations.",
     model=OpenAIChat(id="gpt-4.1-mini"),
     tools=[PythonTools(base_dir=Path("tmp/python"))],
     instructions=[
-        "1. Use PythonTools to write and execute Python scripts for any calculations or data processing",
-        "2. Save any generated graphs to files using matplotlib",
-        "3. Use real data from Metrics Calculator agent for calculations",
-        "4. Never generate reports or documents - that's the Document Generator's job"
+        "1. Use PythonTools to write and execute Python scripts for any calculations",
+        "2. Use real data from other agents for calculations",
+        "3. Never generate reports or documents nor fetch new data - refuse similar tasks."
     ],
     show_tool_calls=True,
     markdown=True
@@ -311,6 +310,8 @@ youtube_team = Team(
         "Use strictly the tool transfer_task_to_member to transfer the task to the appropriate agent.",
         "Consider the chat history provided in the memory context when responding to maintain conversation continuity.",
         "To generate a report or document, use the document_generator agent.",
+        "For data processing and calculations, use the python_script_executor agent - but only after data has been gathered by other agents.",
+        "Remember that the python_script_executor agent should never be used to fetch or gather new data - it only processes existing data."
     ],
     expected_output="Present all data in a clear, organized format using markdown.",
     show_members_responses=True,
