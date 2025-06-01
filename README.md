@@ -51,7 +51,7 @@ All of this happens transparently within a single conversational interface.
 
 ## How It All Happens Behind the Scenes
 
-- Individual specialized sub-agents (e.g., Channel ID Resolver, Channel Data Collector, Video Analysis Specialist, Risk & Sentiment Analyzer, Python Script Executor, Metrics Calculator, Video Statistics Specialist, Talent Specialist) coordinate under a central team orchestration to handle each task in parallel when needed.
+- Individual specialized sub-agents (e.g., Channel ID Resolver, Channel Data Collector, Video Analysis Specialist, Risk & Sentiment Analyzer, Document Generator, Python Script Executor, Metrics Calculator, Video Statistics Specialist, Talent Specialist) coordinate under a central team orchestration to handle each task in parallel when needed.
 - The Python coder agent (Python Script Executor) writes and runs code for any metric calculations or report generation.
 - Firecrawl is used strictly to crawl influencer management agency websites for talent discovery—not for scraping scandal or controversy content.
 - Video audio is transcribed on demand (audio→text) for deeper analysis of transcripts.
@@ -64,10 +64,11 @@ All of this happens transparently within a single conversational interface.
 - **Video Analysis Specialist**: Retrieves video metadata, fetches comments, transcribes audio, and finds sponsor segments.  
 - **Channel Search Specialist**: Discovers YouTube channels based on search queries.  
 - **Risk & Sentiment Analyzer**: Evaluates brand-safety risks and sentiment from comments and online sources.  
-- **Python Script Executor**: Generates and executes Python scripts for any requested calculations, graphs, or reports.  
-- **Metrics Calculator**: Calculates influencer marketing metrics (CPM, CPV, CPA, engagement rate) using provided data.  
+- **Document Generator**: Creates structured documents and reports from analyzed data.
+- **Python Script Executor**: Writes and executes Python scripts for calculations and data processing, including generating graphs using matplotlib.
+- **Metrics Calculator**: Calculates influencer marketing metrics (CPM, CPV, CPA, engagement rate) using real data provided by the Python Script Executor.
 - **Video Statistics Specialist**: Analyzes engagement statistics (views, likes, comments) for recent videos.  
-- **Talent Specialist**: Crawls influencer talent agency websites to extract talent profiles for collaborations.  
+- **Talent Specialist**: Crawls influencer talent agency websites to extract talent profiles for collaborations.
 
 ## Core Functionality
 - **Channel Health Snapshot**  
