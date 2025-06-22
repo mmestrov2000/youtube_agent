@@ -11,7 +11,6 @@ mem0ai==0.1.102
 openai-whisper==20240930
 opencv-python==4.11.0.86
 openpyxl==3.1.5
-pyngrok==7.2.9
 python-docx==1.1.2
 reportlab==4.4.0
 scipy==1.13.1
